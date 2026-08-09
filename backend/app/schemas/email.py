@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import EmailStr, Field, model_validator
 
-from app.models.models import EmailStatus
+from app.models import EmailStatus
 from app.schemas.base import ORMBase
 
 

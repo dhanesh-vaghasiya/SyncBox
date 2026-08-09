@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import EmailStr, HttpUrl, Field
 
-from app.models.models import UserStatus
+from app.models import UserStatus
 from app.schemas.base import ORMBase
 
 
@@ -13,7 +13,7 @@ class UserCreate(ORMBase):
     email: EmailStr
     company_name: str | None = None
     webhook_url: HttpUrl | None = None
-
+    
 
 class UserUpdate(ORMBase):
     company_name: str | None = None
