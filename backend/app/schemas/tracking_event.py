@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+# pyrefly: ignore [missing-import]
 from app.models.models import EventType, EventSource
 from app.schemas.base import ORMBase
 
