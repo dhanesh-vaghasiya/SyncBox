@@ -1,43 +1,34 @@
 package com.project.syncbox.controller;
 
+import com.project.syncbox.service.FileService;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/files")
 public class FileController {
 
-    private final String UPLOAD_DIR = "src/main/resources/static/uploads/";
+    private final FileService fileService;
 
-    public FileController() {
-        File directory = new File(UPLOAD_DIR);
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
+    public FileController(FileService fileService) {
+        this.fileService = fileService;
     }
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body("Please select a file to upload.");
-        }
-
         try {
-            byte[] bytes = file.getBytes();
-            Path path = Paths.get(UPLOAD_DIR + file.getOriginalFilename());
-            Files.write(path, bytes);
+            fileService.saveFile(file);
             return ResponseEntity.ok("File uploaded successfully: " + file.getOriginalFilename());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (IOException e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Failed to upload file.");
@@ -46,12 +37,8 @@ public class FileController {
 
     @GetMapping("/list")
     public ResponseEntity<List<String>> listFiles() {
-        try (Stream<Path> paths = Files.walk(Paths.get(UPLOAD_DIR))) {
-            List<String> fileNames = paths
-                    .filter(Files::isRegularFile)
-                    .map(path -> path.getFileName().toString())
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(fileNames);
+        try {
+            return ResponseEntity.ok(fileService.getFileList());
         } catch (IOException e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(new ArrayList<>());
@@ -59,19 +46,17 @@ public class FileController {
     }
 
     @GetMapping("/download/{filename:.+}")
-    public ResponseEntity<org.springframework.core.io.Resource> downloadFile(@PathVariable String filename) {
+    public ResponseEntity<Resource> downloadFile(@PathVariable String filename) {
         try {
-            Path file = Paths.get(UPLOAD_DIR).resolve(filename);
-            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(file.toUri());
-
-            if (resource.exists() || resource.isReadable()) {
+            Resource resource = fileService.loadFileAsResource(filename);
+            if (resource != null) {
                 return ResponseEntity.ok()
-                        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
                         .body(resource);
             } else {
                 return ResponseEntity.notFound().build();
             }
-        } catch (java.net.MalformedURLException e) {
+        } catch (MalformedURLException e) {
             return ResponseEntity.badRequest().build();
         }
     }

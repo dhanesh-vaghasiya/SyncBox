@@ -168,7 +168,6 @@
                 if (xhr.status >= 200 && xhr.status < 300) {
                     messageDiv.innerText = xhr.responseText;
                     messageDiv.style.color = '#4CAF50';
-                    fetchFiles();
                     fileInput.value = '';
                 } else {
                     messageDiv.innerText = 'Upload failed: ' + xhr.responseText;
@@ -222,6 +221,36 @@
 
         // Fetch files on load
         fetchFiles();
+
+        // Setup WebSocket for real-time synchronization
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = protocol + '//' + window.location.host + '/ws/files';
+            const socket = new WebSocket(wsUrl);
+
+            socket.onopen = function() {
+                console.log('WebSocket connection established.');
+            };
+
+            socket.onmessage = function(event) {
+                if (event.data === 'FILE_UPDATED') {
+                    console.log('File update received from server. Refreshing list...');
+                    fetchFiles();
+                }
+            };
+
+            socket.onclose = function(event) {
+                console.log('WebSocket connection closed. Reconnecting in 5 seconds...');
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            socket.onerror = function(error) {
+                console.error('WebSocket Error:', error);
+            };
+        }
+
+        // Initialize WebSocket connection
+        connectWebSocket();
     </script>
 </body>
 </html>
