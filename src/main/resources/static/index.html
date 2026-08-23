@@ -86,6 +86,33 @@
         .download-btn:hover {
             background-color: #0b7dda;
         }
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+            position: relative;
+            height: 20px;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 4px;
+            transition: width 0.2s;
+        }
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 0;
+            left: 0;
+            line-height: 20px;
+            font-size: 12px;
+            color: #333;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -94,6 +121,10 @@
         <form id="uploadForm">
             <input type="file" id="fileInput" name="file" required>
             <button type="submit">Upload</button>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
         </form>
         <div id="uploadMessage" class="message"></div>
 
@@ -104,7 +135,7 @@
     </div>
 
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        document.getElementById('uploadForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
@@ -114,22 +145,46 @@
             formData.append('file', file);
             
             const messageDiv = document.getElementById('uploadMessage');
-            messageDiv.innerText = 'Uploading...';
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
 
-            try {
-                const response = await fetch('/api/files/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                const message = await response.text();
-                messageDiv.innerText = message;
-                messageDiv.style.color = response.ok ? '#4CAF50' : '#f44336';
-                fetchFiles();
-                fileInput.value = ''; // Reset file input
-            } catch (error) {
+            messageDiv.innerText = '';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressText.innerText = '0%';
+
+            const xhr = new XMLHttpRequest();
+            
+            xhr.upload.addEventListener('progress', (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    progressBar.style.width = percentComplete + '%';
+                    progressText.innerText = percentComplete + '%';
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    messageDiv.innerText = xhr.responseText;
+                    messageDiv.style.color = '#4CAF50';
+                    fetchFiles();
+                    fileInput.value = '';
+                } else {
+                    messageDiv.innerText = 'Upload failed: ' + xhr.responseText;
+                    messageDiv.style.color = '#f44336';
+                }
+                setTimeout(() => { progressContainer.style.display = 'none'; }, 3000);
+            });
+
+            xhr.addEventListener('error', () => {
                 messageDiv.innerText = 'Upload failed due to network error.';
                 messageDiv.style.color = '#f44336';
-            }
+                progressContainer.style.display = 'none';
+            });
+
+            xhr.open('POST', '/api/files/upload', true);
+            xhr.send(formData);
         });
 
         async function fetchFiles() {
