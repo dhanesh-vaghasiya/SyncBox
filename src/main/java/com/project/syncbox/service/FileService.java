@@ -2,7 +2,9 @@ package com.project.syncbox.service;
 
 import com.project.syncbox.handler.FileWebSocketHandler;
 import com.project.syncbox.model.FileMetadata;
+import com.project.syncbox.model.User;
 import com.project.syncbox.repository.FileMetadataRepository;
+import com.project.syncbox.repository.UserRepository;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -24,17 +26,22 @@ public class FileService {
     private final String UPLOAD_DIR = "./uploads/";
     private final FileWebSocketHandler webSocketHandler;
     private final FileMetadataRepository fileMetadataRepository;
+    private final UserRepository userRepository;
 
-    public FileService(FileWebSocketHandler webSocketHandler, FileMetadataRepository fileMetadataRepository) {
+    public FileService(FileWebSocketHandler webSocketHandler, FileMetadataRepository fileMetadataRepository, UserRepository userRepository) {
         this.webSocketHandler = webSocketHandler;
         this.fileMetadataRepository = fileMetadataRepository;
+        this.userRepository = userRepository;
         File directory = new File(UPLOAD_DIR);
         if (!directory.exists()) {
             directory.mkdirs();
         }
     }
 
-    public void saveFile(MultipartFile file) throws IOException {
+    public void saveFile(MultipartFile file, String username) throws IOException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Cannot save empty file.");
         }
@@ -44,7 +51,7 @@ public class FileService {
             originalFilename = "unknown";
         }
         
-        String storedFilename = getUniqueFilename(originalFilename);
+        String storedFilename = getUniqueFilename(originalFilename, user);
         
         byte[] bytes = file.getBytes();
         Path path = Paths.get(UPLOAD_DIR + storedFilename);
@@ -56,6 +63,7 @@ public class FileService {
         metadata.setSize(file.getSize());
         metadata.setContentType(file.getContentType());
         metadata.setUploadedAt(LocalDateTime.now());
+        metadata.setUser(user);
         
         fileMetadataRepository.save(metadata);
         
@@ -63,7 +71,7 @@ public class FileService {
         webSocketHandler.broadcastFileUpdate();
     }
     
-    private String getUniqueFilename(String originalFilename) {
+    private String getUniqueFilename(String originalFilename, User user) {
         String baseName = originalFilename;
         String extension = "";
         
@@ -75,18 +83,28 @@ public class FileService {
         
         String newFilename = originalFilename;
         int counter = 1;
-        while (fileMetadataRepository.findByStoredName(newFilename).isPresent()) {
+        while (fileMetadataRepository.findByUserAndStoredName(user, newFilename).isPresent()) {
             newFilename = baseName + "[" + counter + "]" + extension;
             counter++;
         }
         return newFilename;
     }
 
-    public List<FileMetadata> getFileList() {
-        return fileMetadataRepository.findAll();
+    public List<FileMetadata> getFileList(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return fileMetadataRepository.findAllByUser(user);
     }
 
-    public Resource loadFileAsResource(String filename) throws MalformedURLException {
+    public Resource loadFileAsResource(String filename, String username) throws MalformedURLException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                
+        Optional<FileMetadata> metadata = fileMetadataRepository.findByUserAndStoredName(user, filename);
+        if (metadata.isEmpty()) {
+            return null; // File doesn't exist or doesn't belong to the user
+        }
+
         Path file = Paths.get(UPLOAD_DIR).resolve(filename);
         Resource resource = new UrlResource(file.toUri());
 
@@ -97,14 +115,20 @@ public class FileService {
         }
     }
 
-    public boolean deleteFile(String filename) throws IOException {
-        Path file = Paths.get(UPLOAD_DIR).resolve(filename);
-        boolean deleted = Files.deleteIfExists(file);
-        if (deleted) {
-            Optional<FileMetadata> metadataOpt = fileMetadataRepository.findByStoredName(filename);
-            metadataOpt.ifPresent(fileMetadataRepository::delete);
-            webSocketHandler.broadcastFileUpdate();
+    public boolean deleteFile(String filename, String username) throws IOException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                
+        Optional<FileMetadata> metadataOpt = fileMetadataRepository.findByUserAndStoredName(user, filename);
+        if (metadataOpt.isPresent()) {
+            Path file = Paths.get(UPLOAD_DIR).resolve(filename);
+            boolean deleted = Files.deleteIfExists(file);
+            if (deleted) {
+                fileMetadataRepository.delete(metadataOpt.get());
+                webSocketHandler.broadcastFileUpdate();
+            }
+            return deleted;
         }
-        return deleted;
+        return false;
     }
 }

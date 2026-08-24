@@ -136,7 +136,12 @@
 </head>
 <body>
     <div class="container">
-        <h2>Upload a File</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0;">Upload a File</h2>
+            <form action="/logout" method="post" style="margin: 0; display: inline-block;">
+                <button type="submit" style="background-color: #f44336; padding: 8px 12px; font-size: 14px; border-radius: 4px; border: none; color: white; cursor: pointer;">Logout</button>
+            </form>
+        </div>
         <form id="uploadForm">
             <input type="file" id="fileInput" name="file" required>
             <button type="submit">Upload</button>
