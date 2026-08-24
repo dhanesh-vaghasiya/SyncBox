@@ -86,6 +86,25 @@
         .download-btn:hover {
             background-color: #0b7dda;
         }
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+            padding: 5px 10px;
+            text-decoration: none;
+            border-radius: 3px;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-left: 5px;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
         .progress-container {
             width: 100%;
             background-color: #e0e0e0;
@@ -204,14 +223,41 @@
                     const fileNameSpan = document.createElement('span');
                     fileNameSpan.textContent = file;
                     
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'action-buttons';
+
                     const downloadLink = document.createElement('a');
                     downloadLink.href = `/api/files/download/${encodeURIComponent(file)}`;
                     downloadLink.textContent = 'Download';
                     downloadLink.className = 'download-btn';
                     downloadLink.setAttribute('download', file);
                     
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.onclick = async () => {
+                        if (confirm(`Are you sure you want to delete ${file}?`)) {
+                            try {
+                                const response = await fetch(`/api/files/${encodeURIComponent(file)}`, {
+                                    method: 'DELETE'
+                                });
+                                if (response.ok) {
+                                    // File update will be handled by WebSocket
+                                } else {
+                                    alert('Failed to delete file.');
+                                }
+                            } catch (error) {
+                                console.error('Error deleting file:', error);
+                                alert('Error deleting file.');
+                            }
+                        }
+                    };
+
+                    actionsDiv.appendChild(downloadLink);
+                    actionsDiv.appendChild(deleteBtn);
+
                     li.appendChild(fileNameSpan);
-                    li.appendChild(downloadLink);
+                    li.appendChild(actionsDiv);
                     container.appendChild(li);
                 });
             } catch (error) {

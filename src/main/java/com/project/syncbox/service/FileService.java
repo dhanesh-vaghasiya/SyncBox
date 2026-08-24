@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 @Service
 public class FileService {
 
-    private final String UPLOAD_DIR = "src/main/resources/static/uploads/";
+    private final String UPLOAD_DIR = "./uploads/";
     private final FileWebSocketHandler webSocketHandler;
 
     public FileService(FileWebSocketHandler webSocketHandler) {
@@ -60,5 +60,14 @@ public class FileService {
         } else {
             return null;
         }
+    }
+
+    public boolean deleteFile(String filename) throws IOException {
+        Path file = Paths.get(UPLOAD_DIR).resolve(filename);
+        boolean deleted = Files.deleteIfExists(file);
+        if (deleted) {
+            webSocketHandler.broadcastFileUpdate();
+        }
+        return deleted;
     }
 }

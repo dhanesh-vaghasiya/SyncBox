@@ -60,4 +60,19 @@ public class FileController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @DeleteMapping("/{filename:.+}")
+    public ResponseEntity<String> deleteFile(@PathVariable String filename) {
+        try {
+            boolean deleted = fileService.deleteFile(filename);
+            if (deleted) {
+                return ResponseEntity.ok("File deleted successfully");
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Failed to delete file.");
+        }
+    }
 }
