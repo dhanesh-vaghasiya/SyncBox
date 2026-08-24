@@ -220,25 +220,44 @@
                 files.forEach(file => {
                     const li = document.createElement('li');
                     
+                    const fileInfoDiv = document.createElement('div');
+                    fileInfoDiv.style.display = 'flex';
+                    fileInfoDiv.style.flexDirection = 'column';
+                    fileInfoDiv.style.gap = '4px';
+
                     const fileNameSpan = document.createElement('span');
-                    fileNameSpan.textContent = file;
+                    fileNameSpan.textContent = file.originalName;
+                    if (file.storedName !== file.originalName) {
+                        fileNameSpan.textContent += ` (saved as ${file.storedName})`;
+                    }
+                    fileNameSpan.style.fontWeight = 'bold';
+
+                    const fileMetaSpan = document.createElement('span');
+                    const sizeInKB = (file.size / 1024).toFixed(2);
+                    const date = new Date(file.uploadedAt).toLocaleString();
+                    fileMetaSpan.textContent = `${sizeInKB} KB • ${file.contentType || 'Unknown Type'} • ${date}`;
+                    fileMetaSpan.style.fontSize = '12px';
+                    fileMetaSpan.style.color = '#666';
+
+                    fileInfoDiv.appendChild(fileNameSpan);
+                    fileInfoDiv.appendChild(fileMetaSpan);
                     
                     const actionsDiv = document.createElement('div');
                     actionsDiv.className = 'action-buttons';
 
                     const downloadLink = document.createElement('a');
-                    downloadLink.href = `/api/files/download/${encodeURIComponent(file)}`;
+                    downloadLink.href = `/api/files/download/${encodeURIComponent(file.storedName)}`;
                     downloadLink.textContent = 'Download';
                     downloadLink.className = 'download-btn';
-                    downloadLink.setAttribute('download', file);
+                    downloadLink.setAttribute('download', file.originalName);
                     
                     const deleteBtn = document.createElement('button');
                     deleteBtn.textContent = 'Delete';
                     deleteBtn.className = 'delete-btn';
                     deleteBtn.onclick = async () => {
-                        if (confirm(`Are you sure you want to delete ${file}?`)) {
+                        if (confirm(`Are you sure you want to delete ${file.originalName}?`)) {
                             try {
-                                const response = await fetch(`/api/files/${encodeURIComponent(file)}`, {
+                                const response = await fetch(`/api/files/${encodeURIComponent(file.storedName)}`, {
                                     method: 'DELETE'
                                 });
                                 if (response.ok) {
@@ -256,7 +275,7 @@
                     actionsDiv.appendChild(downloadLink);
                     actionsDiv.appendChild(deleteBtn);
 
-                    li.appendChild(fileNameSpan);
+                    li.appendChild(fileInfoDiv);
                     li.appendChild(actionsDiv);
                     container.appendChild(li);
                 });

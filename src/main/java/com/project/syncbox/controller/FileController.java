@@ -1,5 +1,6 @@
 package com.project.syncbox.controller;
 
+import com.project.syncbox.model.FileMetadata;
 import com.project.syncbox.service.FileService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -36,13 +37,8 @@ public class FileController {
     }
 
     @GetMapping("/list")
-    public ResponseEntity<List<String>> listFiles() {
-        try {
-            return ResponseEntity.ok(fileService.getFileList());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body(new ArrayList<>());
-        }
+    public ResponseEntity<List<FileMetadata>> listFiles() {
+        return ResponseEntity.ok(fileService.getFileList());
     }
 
     @GetMapping("/download/{filename:.+}")
