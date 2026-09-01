@@ -1,16 +1,28 @@
 version: '3.8'
 services:
-  postgres:
+  db:
     image: postgres:15
     container_name: syncbox-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 9265944501
-      POSTGRES_DB: syncbox
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-9265944501}
+      POSTGRES_DB: ${DB_NAME:-syncbox}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: syncbox-app
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-syncbox}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-9265944501}
+    depends_on:
+      - db
 
 volumes:
   postgres_data:
