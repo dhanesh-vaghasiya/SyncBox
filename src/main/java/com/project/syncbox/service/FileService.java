@@ -152,12 +152,11 @@ public class FileService {
         Optional<FileMetadata> metadataOpt = fileMetadataRepository.findByUserAndStoredName(user, filename);
         if (metadataOpt.isPresent()) {
             Path file = Paths.get(UPLOAD_DIR).resolve(filename);
-            boolean deleted = Files.deleteIfExists(file);
-            if (deleted) {
-                fileMetadataRepository.delete(metadataOpt.get());
-                webSocketHandler.broadcastFileUpdate();
-            }
-            return deleted;
+            Files.deleteIfExists(file); // Ignore result, the file might already be missing from disk
+            
+            fileMetadataRepository.delete(metadataOpt.get());
+            webSocketHandler.broadcastFileUpdate();
+            return true;
         }
         return false;
     }

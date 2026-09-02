@@ -6,7 +6,12 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "file_metadata")
+@Table(
+    name = "file_metadata",
+    indexes = {
+        @Index(name = "idx_user_checksum", columnList = "user_id, checksum")
+    }
+)
 @Data
 @NoArgsConstructor
 public class FileMetadata {
@@ -29,7 +34,7 @@ public class FileMetadata {
     @Column(name = "uploaded_at", nullable = false)
     private LocalDateTime uploadedAt;
 
-    @Column(name = "checksum", unique = true)
+    @Column(name = "checksum")
     private String checksum;
 
     @ManyToOne(fetch = FetchType.LAZY)

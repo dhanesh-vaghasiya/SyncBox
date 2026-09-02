@@ -66,6 +66,7 @@ public class FileController {
 
     @DeleteMapping("/{filename:.+}")
     public ResponseEntity<String> deleteFile(@PathVariable String filename, Principal principal) {
+        System.out.println("Attempting to delete file: " + filename);
         try {
             boolean deleted = fileService.deleteFile(filename, principal.getName());
             if (deleted) {

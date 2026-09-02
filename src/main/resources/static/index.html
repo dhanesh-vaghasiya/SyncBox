@@ -1,341 +1,379 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SyncBox - File Upload</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
-            margin: 0;
-            padding: 40px;
-            display: flex;
-            justify-content: center;
-        }
-        .container {
-            background: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 500px;
-        }
-        h2 {
-            margin-top: 0;
-            color: #4CAF50;
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        input[type="file"] {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .message {
-            margin-bottom: 20px;
-            font-weight: bold;
-            color: #555;
-        }
-        .file-list h3 {
-            margin-top: 0;
-            border-bottom: 2px solid #4CAF50;
-            padding-bottom: 10px;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            background: #f9f9f9;
-            margin-bottom: 8px;
-            padding: 10px;
-            border-radius: 4px;
-            border-left: 4px solid #4CAF50;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .download-btn {
-            background-color: #2196F3;
-            color: white;
-            padding: 5px 10px;
-            text-decoration: none;
-            border-radius: 3px;
-            font-size: 14px;
-            transition: background 0.3s;
-        }
-        .download-btn:hover {
-            background-color: #0b7dda;
-        }
-        .delete-btn {
-            background-color: #f44336;
-            color: white;
-            padding: 5px 10px;
-            text-decoration: none;
-            border-radius: 3px;
-            font-size: 14px;
-            border: none;
-            cursor: pointer;
-            transition: background 0.3s;
-            margin-left: 5px;
-        }
-        .delete-btn:hover {
-            background-color: #d32f2f;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-        }
-        .progress-container {
-            width: 100%;
-            background-color: #e0e0e0;
-            border-radius: 4px;
-            margin-top: 10px;
-            display: none;
-            position: relative;
-            height: 20px;
-        }
-        .progress-bar {
-            width: 0%;
-            height: 100%;
-            background-color: #4CAF50;
-            border-radius: 4px;
-            transition: width 0.2s;
-        }
-        .progress-text {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            top: 0;
-            left: 0;
-            line-height: 20px;
-            font-size: 12px;
-            color: #333;
-            font-weight: bold;
-        }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f7f6;
+        color: #333;
+        margin: 0;
+        padding: 40px;
+        display: flex;
+        justify-content: center;
+      }
+      .container {
+        background: #fff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 500px;
+      }
+      h2 {
+        margin-top: 0;
+        color: #4caf50;
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      input[type="file"] {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background 0.3s;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      .message {
+        margin-bottom: 20px;
+        font-weight: bold;
+        color: #555;
+      }
+      .file-list h3 {
+        margin-top: 0;
+        border-bottom: 2px solid #4caf50;
+        padding-bottom: 10px;
+      }
+      ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      li {
+        background: #f9f9f9;
+        margin-bottom: 8px;
+        padding: 10px;
+        border-radius: 4px;
+        border-left: 4px solid #4caf50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .download-btn {
+        background-color: #2196f3;
+        color: white;
+        padding: 5px 10px;
+        text-decoration: none;
+        border-radius: 3px;
+        font-size: 14px;
+        transition: background 0.3s;
+      }
+      .download-btn:hover {
+        background-color: #0b7dda;
+      }
+      .delete-btn {
+        background-color: #f44336;
+        color: white;
+        padding: 5px 10px;
+        text-decoration: none;
+        border-radius: 3px;
+        font-size: 14px;
+        border: none;
+        cursor: pointer;
+        transition: background 0.3s;
+        margin-left: 5px;
+      }
+      .delete-btn:hover {
+        background-color: #d32f2f;
+      }
+      .action-buttons {
+        display: flex;
+        gap: 5px;
+      }
+      .progress-container {
+        width: 100%;
+        background-color: #e0e0e0;
+        border-radius: 4px;
+        margin-top: 10px;
+        display: none;
+        position: relative;
+        height: 20px;
+      }
+      .progress-bar {
+        width: 0%;
+        height: 100%;
+        background-color: #4caf50;
+        border-radius: 4px;
+        transition: width 0.2s;
+      }
+      .progress-text {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        top: 0;
+        left: 0;
+        line-height: 20px;
+        font-size: 12px;
+        color: #333;
+        font-weight: bold;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="margin: 0;">Upload a File</h2>
-            <form action="/logout" method="post" style="margin: 0; display: inline-block;">
-                <button type="submit" style="background-color: #f44336; padding: 8px 12px; font-size: 14px; border-radius: 4px; border: none; color: white; cursor: pointer;">Logout</button>
-            </form>
-        </div>
-        <form id="uploadForm">
-            <input type="file" id="fileInput" name="file" required>
-            <button type="submit">Upload</button>
-            <div class="progress-container" id="progressContainer">
-                <div class="progress-bar" id="progressBar"></div>
-                <div class="progress-text" id="progressText">0%</div>
-            </div>
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        "
+      >
+        <h2 style="margin: 0">Upload a File</h2>
+        <form
+          action="/logout"
+          method="post"
+          style="margin: 0; display: inline-block"
+        >
+          <button
+            type="submit"
+            style="
+              background-color: #f44336;
+              padding: 8px 12px;
+              font-size: 14px;
+              border-radius: 4px;
+              border: none;
+              color: white;
+              cursor: pointer;
+            "
+          >
+            Logout
+          </button>
         </form>
-        <div id="uploadMessage" class="message"></div>
-
-        <div class="file-list">
-            <h3>Uploaded Files</h3>
-            <ul id="filesContainer"></ul>
+      </div>
+      <form id="uploadForm">
+        <input type="file" id="fileInput" name="file" required />
+        <button type="submit">Upload</button>
+        <div class="progress-container" id="progressContainer">
+          <div class="progress-bar" id="progressBar"></div>
+          <div class="progress-text" id="progressText">0%</div>
         </div>
+      </form>
+      <div id="uploadMessage" class="message"></div>
+
+      <div class="file-list">
+        <h3>Uploaded Files</h3>
+        <ul id="filesContainer"></ul>
+      </div>
     </div>
 
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            if (!file) return;
+      document.getElementById("uploadForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+        if (!file) return;
 
-            uploadFile(file, false);
+        uploadFile(file, false);
+      });
+
+      function uploadFile(file, force) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const messageDiv = document.getElementById("uploadMessage");
+        const progressContainer = document.getElementById("progressContainer");
+        const progressBar = document.getElementById("progressBar");
+        const progressText = document.getElementById("progressText");
+
+        messageDiv.innerText = "";
+        progressContainer.style.display = "block";
+        progressBar.style.width = "0%";
+        progressText.innerText = "0%";
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round(
+              (event.loaded / event.total) * 100,
+            );
+            progressBar.style.width = percentComplete + "%";
+            progressText.innerText = percentComplete + "%";
+          }
         });
 
-        function uploadFile(file, force) {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            const messageDiv = document.getElementById('uploadMessage');
-            const progressContainer = document.getElementById('progressContainer');
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-
-            messageDiv.innerText = '';
-            progressContainer.style.display = 'block';
-            progressBar.style.width = '0%';
-            progressText.innerText = '0%';
-
-            const xhr = new XMLHttpRequest();
-            
-            xhr.upload.addEventListener('progress', (event) => {
-                if (event.lengthComputable) {
-                    const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    progressBar.style.width = percentComplete + '%';
-                    progressText.innerText = percentComplete + '%';
-                }
-            });
-
-            xhr.addEventListener('load', () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    messageDiv.innerText = xhr.responseText;
-                    messageDiv.style.color = '#4CAF50';
-                    document.getElementById('fileInput').value = '';
-                } else if (xhr.status === 409) {
-                    progressContainer.style.display = 'none';
-                    if (confirm("An identical file already exists. Are you sure you want to upload this duplicate?")) {
-                        uploadFile(file, true);
-                        return; // Prevent clearing the progress container timeout below
-                    } else {
-                        messageDiv.innerText = 'Upload cancelled.';
-                        messageDiv.style.color = '#f44336';
-                        document.getElementById('fileInput').value = '';
-                    }
-                } else {
-                    messageDiv.innerText = 'Upload failed: ' + xhr.responseText;
-                    messageDiv.style.color = '#f44336';
-                }
-                setTimeout(() => { progressContainer.style.display = 'none'; }, 3000);
-            });
-
-            xhr.addEventListener('error', () => {
-                messageDiv.innerText = 'Upload failed due to network error.';
-                messageDiv.style.color = '#f44336';
-                progressContainer.style.display = 'none';
-            });
-
-            const url = force ? '/api/files/upload?force=true' : '/api/files/upload';
-            xhr.open('POST', url, true);
-            xhr.send(formData);
-        }
-
-        async function fetchFiles() {
-            try {
-                const response = await fetch('/api/files/list');
-                const files = await response.json();
-                const container = document.getElementById('filesContainer');
-                container.innerHTML = '';
-                
-                if (files.length === 0) {
-                    container.innerHTML = '<li>No files uploaded yet.</li>';
-                    return;
-                }
-                
-                files.forEach(file => {
-                    const li = document.createElement('li');
-                    
-                    const fileInfoDiv = document.createElement('div');
-                    fileInfoDiv.style.display = 'flex';
-                    fileInfoDiv.style.flexDirection = 'column';
-                    fileInfoDiv.style.gap = '4px';
-
-                    const fileNameSpan = document.createElement('span');
-                    fileNameSpan.textContent = file.originalName;
-                    if (file.storedName !== file.originalName) {
-                        fileNameSpan.textContent += ` (saved as ${file.storedName})`;
-                    }
-                    fileNameSpan.style.fontWeight = 'bold';
-
-                    const fileMetaSpan = document.createElement('span');
-                    const sizeInKB = (file.size / 1024).toFixed(2);
-                    const date = new Date(file.uploadedAt).toLocaleString();
-                    fileMetaSpan.textContent = `${sizeInKB} KB • ${file.contentType || 'Unknown Type'} • ${date}`;
-                    fileMetaSpan.style.fontSize = '12px';
-                    fileMetaSpan.style.color = '#666';
-
-                    fileInfoDiv.appendChild(fileNameSpan);
-                    fileInfoDiv.appendChild(fileMetaSpan);
-                    
-                    const actionsDiv = document.createElement('div');
-                    actionsDiv.className = 'action-buttons';
-
-                    const downloadLink = document.createElement('a');
-                    downloadLink.href = `/api/files/download/${encodeURIComponent(file.storedName)}`;
-                    downloadLink.textContent = 'Download';
-                    downloadLink.className = 'download-btn';
-                    downloadLink.setAttribute('download', file.originalName);
-                    
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.textContent = 'Delete';
-                    deleteBtn.className = 'delete-btn';
-                    deleteBtn.onclick = async () => {
-                        if (confirm(`Are you sure you want to delete ${file.originalName}?`)) {
-                            try {
-                                const response = await fetch(`/api/files/${encodeURIComponent(file.storedName)}`, {
-                                    method: 'DELETE'
-                                });
-                                if (response.ok) {
-                                    // File update will be handled by WebSocket
-                                } else {
-                                    alert('Failed to delete file.');
-                                }
-                            } catch (error) {
-                                console.error('Error deleting file:', error);
-                                alert('Error deleting file.');
-                            }
-                        }
-                    };
-
-                    actionsDiv.appendChild(downloadLink);
-                    actionsDiv.appendChild(deleteBtn);
-
-                    li.appendChild(fileInfoDiv);
-                    li.appendChild(actionsDiv);
-                    container.appendChild(li);
-                });
-            } catch (error) {
-                console.error('Failed to fetch files:', error);
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            messageDiv.innerText = xhr.responseText;
+            messageDiv.style.color = "#4CAF50";
+            document.getElementById("fileInput").value = "";
+          } else if (xhr.status === 409) {
+            progressContainer.style.display = "none";
+            if (
+              confirm(
+                "An identical file already exists. Are you sure you want to upload this duplicate?",
+              )
+            ) {
+              uploadFile(file, true);
+              return; // Prevent clearing the progress container timeout below
+            } else {
+              messageDiv.innerText = "Upload cancelled.";
+              messageDiv.style.color = "#f44336";
+              document.getElementById("fileInput").value = "";
             }
-        }
+          } else {
+            messageDiv.innerText = "Upload failed: " + xhr.responseText;
+            messageDiv.style.color = "#f44336";
+          }
+          setTimeout(() => {
+            progressContainer.style.display = "none";
+          }, 3000);
+        });
 
-        // Fetch files on load
-        fetchFiles();
+        xhr.addEventListener("error", () => {
+          messageDiv.innerText = "Upload failed due to network error.";
+          messageDiv.style.color = "#f44336";
+          progressContainer.style.display = "none";
+        });
 
-        // Setup WebSocket for real-time synchronization
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = protocol + '//' + window.location.host + '/ws/files';
-            const socket = new WebSocket(wsUrl);
+        const url = force
+          ? "/api/files/upload?force=true"
+          : "/api/files/upload";
+        xhr.open("POST", url, true);
+        xhr.send(formData);
+      }
 
-            socket.onopen = function() {
-                console.log('WebSocket connection established.');
-            };
+      async function fetchFiles() {
+        try {
+          const response = await fetch("/api/files/list");
+          const files = await response.json();
+          const container = document.getElementById("filesContainer");
+          container.innerHTML = "";
 
-            socket.onmessage = function(event) {
-                if (event.data === 'FILE_UPDATED') {
-                    console.log('File update received from server. Refreshing list...');
-                    fetchFiles();
+          if (files.length === 0) {
+            container.innerHTML = "<li>No files uploaded yet.</li>";
+            return;
+          }
+
+          files.forEach((file) => {
+            const li = document.createElement("li");
+
+            const fileInfoDiv = document.createElement("div");
+            fileInfoDiv.style.display = "flex";
+            fileInfoDiv.style.flexDirection = "column";
+            fileInfoDiv.style.gap = "4px";
+
+            const fileNameSpan = document.createElement("span");
+            fileNameSpan.textContent = file.storedName;
+            fileNameSpan.style.fontWeight = "bold";
+
+            const fileMetaSpan = document.createElement("span");
+            const sizeInKB = (file.size / 1024).toFixed(2);
+            const date = new Date(file.uploadedAt).toLocaleString();
+            fileMetaSpan.textContent = `${sizeInKB} KB • ${file.contentType || "Unknown Type"} • ${date}`;
+            fileMetaSpan.style.fontSize = "12px";
+            fileMetaSpan.style.color = "#666";
+
+            fileInfoDiv.appendChild(fileNameSpan);
+            fileInfoDiv.appendChild(fileMetaSpan);
+
+            const actionsDiv = document.createElement("div");
+            actionsDiv.className = "action-buttons";
+
+            const downloadLink = document.createElement("a");
+            downloadLink.href = `/api/files/download/${encodeURIComponent(file.storedName)}`;
+            downloadLink.textContent = "Download";
+            downloadLink.className = "download-btn";
+            downloadLink.setAttribute("download", file.originalName);
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Delete";
+            deleteBtn.className = "delete-btn";
+            deleteBtn.onclick = async () => {
+              if (
+                confirm(`Are you sure you want to delete ${file.originalName}?`)
+              ) {
+                try {
+                  const response = await fetch(
+                    `/api/files/${encodeURIComponent(file.storedName)}`,
+                    {
+                      method: "DELETE",
+                    },
+                  );
+                  if (response.ok) {
+                    // File update will be handled by WebSocket
+                  } else {
+                    alert("Failed to delete file.");
+                  }
+                } catch (error) {
+                  console.error("Error deleting file:", error);
+                  alert("Error deleting file.");
                 }
+              }
             };
 
-            socket.onclose = function(event) {
-                console.log('WebSocket connection closed. Reconnecting in 5 seconds...');
-                setTimeout(connectWebSocket, 5000);
-            };
-            
-            socket.onerror = function(error) {
-                console.error('WebSocket Error:', error);
-            };
+            actionsDiv.appendChild(downloadLink);
+            actionsDiv.appendChild(deleteBtn);
+
+            li.appendChild(fileInfoDiv);
+            li.appendChild(actionsDiv);
+            container.appendChild(li);
+          });
+        } catch (error) {
+          console.error("Failed to fetch files:", error);
         }
+      }
 
-        // Initialize WebSocket connection
-        connectWebSocket();
+      // Fetch files on load
+      fetchFiles();
+
+      // Setup WebSocket for real-time synchronization
+      function connectWebSocket() {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = protocol + "//" + window.location.host + "/ws/files";
+        const socket = new WebSocket(wsUrl);
+
+        socket.onopen = function () {
+          console.log("WebSocket connection established.");
+        };
+
+        socket.onmessage = function (event) {
+          if (event.data === "FILE_UPDATED") {
+            console.log("File update received from server. Refreshing list...");
+            fetchFiles();
+          }
+        };
+
+        socket.onclose = function (event) {
+          console.log(
+            "WebSocket connection closed. Reconnecting in 5 seconds...",
+          );
+          setTimeout(connectWebSocket, 5000);
+        };
+
+        socket.onerror = function (error) {
+          console.error("WebSocket Error:", error);
+        };
+      }
+
+      // Initialize WebSocket connection
+      connectWebSocket();
     </script>
-</body>
+  </body>
 </html>

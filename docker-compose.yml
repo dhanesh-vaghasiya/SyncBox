@@ -23,6 +23,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-9265944501}
     depends_on:
       - db
+    volumes:
+      - app_uploads:/app/uploads
 
 volumes:
   postgres_data:
+  app_uploads:
