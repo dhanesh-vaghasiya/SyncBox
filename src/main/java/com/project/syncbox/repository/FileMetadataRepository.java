@@ -13,4 +13,5 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long
     Optional<FileMetadata> findByStoredName(String storedName);
     Optional<FileMetadata> findByUserAndStoredName(User user, String storedName);
     List<FileMetadata> findAllByUser(User user);
+    boolean existsByUserAndChecksum(User user, String checksum);
 }

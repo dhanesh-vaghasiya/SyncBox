@@ -165,6 +165,10 @@
             const file = fileInput.files[0];
             if (!file) return;
 
+            uploadFile(file, false);
+        });
+
+        function uploadFile(file, force) {
             const formData = new FormData();
             formData.append('file', file);
             
@@ -192,7 +196,17 @@
                 if (xhr.status >= 200 && xhr.status < 300) {
                     messageDiv.innerText = xhr.responseText;
                     messageDiv.style.color = '#4CAF50';
-                    fileInput.value = '';
+                    document.getElementById('fileInput').value = '';
+                } else if (xhr.status === 409) {
+                    progressContainer.style.display = 'none';
+                    if (confirm("An identical file already exists. Are you sure you want to upload this duplicate?")) {
+                        uploadFile(file, true);
+                        return; // Prevent clearing the progress container timeout below
+                    } else {
+                        messageDiv.innerText = 'Upload cancelled.';
+                        messageDiv.style.color = '#f44336';
+                        document.getElementById('fileInput').value = '';
+                    }
                 } else {
                     messageDiv.innerText = 'Upload failed: ' + xhr.responseText;
                     messageDiv.style.color = '#f44336';
@@ -206,9 +220,10 @@
                 progressContainer.style.display = 'none';
             });
 
-            xhr.open('POST', '/api/files/upload', true);
+            const url = force ? '/api/files/upload?force=true' : '/api/files/upload';
+            xhr.open('POST', url, true);
             xhr.send(formData);
-        });
+        }
 
         async function fetchFiles() {
             try {

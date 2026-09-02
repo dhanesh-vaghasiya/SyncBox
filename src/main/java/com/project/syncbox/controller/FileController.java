@@ -1,9 +1,11 @@
 package com.project.syncbox.controller;
 
+import com.project.syncbox.exception.DuplicateFileException;
 import com.project.syncbox.model.FileMetadata;
 import com.project.syncbox.service.FileService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,10 +26,15 @@ public class FileController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, Principal principal) {
+    public ResponseEntity<String> uploadFile(
+            @RequestParam("file") MultipartFile file, 
+            @RequestParam(value = "force", defaultValue = "false") boolean force,
+            Principal principal) {
         try {
-            fileService.saveFile(file, principal.getName());
+            fileService.saveFile(file, principal.getName(), force);
             return ResponseEntity.ok("File uploaded successfully: " + file.getOriginalFilename());
+        } catch (DuplicateFileException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (IOException e) {
