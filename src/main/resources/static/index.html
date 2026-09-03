@@ -177,8 +177,17 @@
       <div id="uploadMessage" class="message"></div>
 
       <div class="file-list">
-        <h3>Uploaded Files</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4caf50; padding-bottom: 10px; margin-bottom: 10px;">
+            <h3 style="margin: 0; border: none; padding: 0;">Uploaded Files</h3>
+        </div>
         <ul id="filesContainer"></ul>
+      </div>
+
+      <div class="file-list" style="margin-top: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f44336; padding-bottom: 10px; margin-bottom: 10px;">
+            <h3 style="margin: 0; color: #f44336; border: none; padding: 0;">Trash</h3>
+        </div>
+        <ul id="trashContainer"></ul>
       </div>
     </div>
 
@@ -303,11 +312,12 @@
             downloadLink.setAttribute("download", file.originalName);
 
             const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Delete";
+            deleteBtn.textContent = "Move to Trash";
             deleteBtn.className = "delete-btn";
+            deleteBtn.style.backgroundColor = "#ff9800";
             deleteBtn.onclick = async () => {
               if (
-                confirm(`Are you sure you want to delete ${file.originalName}?`)
+                confirm(`Are you sure you want to move ${file.originalName} to trash?`)
               ) {
                 try {
                   const response = await fetch(
@@ -317,13 +327,14 @@
                     },
                   );
                   if (response.ok) {
-                    // File update will be handled by WebSocket
+                    fetchFiles();
+                    fetchTrashedFiles();
                   } else {
-                    alert("Failed to delete file.");
+                    alert("Failed to move file to trash.");
                   }
                 } catch (error) {
-                  console.error("Error deleting file:", error);
-                  alert("Error deleting file.");
+                  console.error("Error trashing file:", error);
+                  alert("Error trashing file.");
                 }
               }
             };
@@ -340,8 +351,110 @@
         }
       }
 
+      async function fetchTrashedFiles() {
+        try {
+          const response = await fetch("/api/files/trash");
+          const files = await response.json();
+          const container = document.getElementById("trashContainer");
+          container.innerHTML = "";
+
+          if (files.length === 0) {
+            container.innerHTML = "<li>Trash is empty.</li>";
+            return;
+          }
+
+          files.forEach((file) => {
+            const li = document.createElement("li");
+            li.style.borderLeftColor = "#f44336";
+
+            const fileInfoDiv = document.createElement("div");
+            fileInfoDiv.style.display = "flex";
+            fileInfoDiv.style.flexDirection = "column";
+            fileInfoDiv.style.gap = "4px";
+
+            const fileNameSpan = document.createElement("span");
+            fileNameSpan.textContent = file.storedName;
+            fileNameSpan.style.fontWeight = "bold";
+            fileNameSpan.style.color = "#888";
+            fileNameSpan.style.textDecoration = "line-through";
+
+            const fileMetaSpan = document.createElement("span");
+            const sizeInKB = (file.size / 1024).toFixed(2);
+            const date = new Date(file.deletedAt).toLocaleString();
+            fileMetaSpan.textContent = `${sizeInKB} KB • Deleted: ${date}`;
+            fileMetaSpan.style.fontSize = "12px";
+            fileMetaSpan.style.color = "#888";
+
+            fileInfoDiv.appendChild(fileNameSpan);
+            fileInfoDiv.appendChild(fileMetaSpan);
+
+            const actionsDiv = document.createElement("div");
+            actionsDiv.className = "action-buttons";
+
+            const restoreBtn = document.createElement("button");
+            restoreBtn.textContent = "Restore";
+            restoreBtn.className = "download-btn";
+            restoreBtn.onclick = async () => {
+                try {
+                  const response = await fetch(
+                    `/api/files/${encodeURIComponent(file.storedName)}/restore`,
+                    {
+                      method: "POST",
+                    },
+                  );
+                  if (response.ok) {
+                    fetchFiles();
+                    fetchTrashedFiles();
+                  } else {
+                    alert("Failed to restore file.");
+                  }
+                } catch (error) {
+                  console.error("Error restoring file:", error);
+                  alert("Error restoring file.");
+                }
+            };
+
+            const permanentDeleteBtn = document.createElement("button");
+            permanentDeleteBtn.textContent = "Delete Permanently";
+            permanentDeleteBtn.className = "delete-btn";
+            permanentDeleteBtn.onclick = async () => {
+              if (
+                confirm(`Are you absolutely sure you want to permanently delete ${file.originalName}? This cannot be undone.`)
+              ) {
+                try {
+                  const response = await fetch(
+                    `/api/files/${encodeURIComponent(file.storedName)}/permanent`,
+                    {
+                      method: "DELETE",
+                    },
+                  );
+                  if (response.ok) {
+                    fetchTrashedFiles();
+                  } else {
+                    alert("Failed to permanently delete file.");
+                  }
+                } catch (error) {
+                  console.error("Error deleting file permanently:", error);
+                  alert("Error deleting file permanently.");
+                }
+              }
+            };
+
+            actionsDiv.appendChild(restoreBtn);
+            actionsDiv.appendChild(permanentDeleteBtn);
+
+            li.appendChild(fileInfoDiv);
+            li.appendChild(actionsDiv);
+            container.appendChild(li);
+          });
+        } catch (error) {
+          console.error("Failed to fetch trashed files:", error);
+        }
+      }
+
       // Fetch files on load
       fetchFiles();
+      fetchTrashedFiles();
 
       // Setup WebSocket for real-time synchronization
       function connectWebSocket() {
@@ -355,8 +468,9 @@
 
         socket.onmessage = function (event) {
           if (event.data === "FILE_UPDATED") {
-            console.log("File update received from server. Refreshing list...");
+            console.log("File update received from server. Refreshing lists...");
             fetchFiles();
+            fetchTrashedFiles();
           }
         };
 

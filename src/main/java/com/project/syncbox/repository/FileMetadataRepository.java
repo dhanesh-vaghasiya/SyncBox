@@ -12,6 +12,12 @@ import java.util.Optional;
 public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long> {
     Optional<FileMetadata> findByStoredName(String storedName);
     Optional<FileMetadata> findByUserAndStoredName(User user, String storedName);
+    
     List<FileMetadata> findAllByUser(User user);
-    boolean existsByUserAndChecksum(User user, String checksum);
+    List<FileMetadata> findAllByUserAndDeletedAtIsNull(User user);
+    List<FileMetadata> findAllByUserAndDeletedAtIsNotNull(User user);
+    
+    boolean existsByUserAndChecksumAndDeletedAtIsNull(User user, String checksum);
+    
+    List<FileMetadata> findByDeletedAtBefore(java.time.LocalDateTime cutoff);
 }

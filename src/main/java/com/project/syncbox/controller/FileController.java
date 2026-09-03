@@ -48,6 +48,11 @@ public class FileController {
         return ResponseEntity.ok(fileService.getFileList(principal.getName()));
     }
 
+    @GetMapping("/trash")
+    public ResponseEntity<List<FileMetadata>> listTrashedFiles(Principal principal) {
+        return ResponseEntity.ok(fileService.getTrashedFileList(principal.getName()));
+    }
+
     @GetMapping("/download/{filename:.+}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String filename, Principal principal) {
         try {
@@ -67,16 +72,36 @@ public class FileController {
     @DeleteMapping("/{filename:.+}")
     public ResponseEntity<String> deleteFile(@PathVariable String filename, Principal principal) {
         System.out.println("Attempting to delete file: " + filename);
+        boolean deleted = fileService.deleteFile(filename, principal.getName());
+        if (deleted) {
+            return ResponseEntity.ok("File moved to trash successfully");
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/{filename:.+}/restore")
+    public ResponseEntity<String> restoreFile(@PathVariable String filename, Principal principal) {
+        boolean restored = fileService.restoreFile(filename, principal.getName());
+        if (restored) {
+            return ResponseEntity.ok("File restored successfully");
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/{filename:.+}/permanent")
+    public ResponseEntity<String> permanentlyDeleteFile(@PathVariable String filename, Principal principal) {
         try {
-            boolean deleted = fileService.deleteFile(filename, principal.getName());
+            boolean deleted = fileService.permanentlyDeleteFile(filename, principal.getName());
             if (deleted) {
-                return ResponseEntity.ok("File deleted successfully");
+                return ResponseEntity.ok("File permanently deleted");
             } else {
                 return ResponseEntity.notFound().build();
             }
         } catch (IOException e) {
             e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Failed to delete file.");
+            return ResponseEntity.internalServerError().body("Failed to permanently delete file.");
         }
     }
 }

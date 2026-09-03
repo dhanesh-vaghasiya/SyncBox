@@ -54,7 +54,7 @@ public class FileService {
         // Calculate checksum
         String checksum = calculateChecksum(bytes);
         
-        if (!force && fileMetadataRepository.existsByUserAndChecksum(user, checksum)) {
+        if (!force && fileMetadataRepository.existsByUserAndChecksumAndDeletedAtIsNull(user, checksum)) {
             throw new DuplicateFileException("DUPLICATE_CHECKSUM");
         }
         
@@ -123,7 +123,13 @@ public class FileService {
     public List<FileMetadata> getFileList(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        return fileMetadataRepository.findAllByUser(user);
+        return fileMetadataRepository.findAllByUserAndDeletedAtIsNull(user);
+    }
+
+    public List<FileMetadata> getTrashedFileList(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return fileMetadataRepository.findAllByUserAndDeletedAtIsNotNull(user);
     }
 
     public Resource loadFileAsResource(String filename, String username) throws MalformedURLException {
@@ -145,19 +151,52 @@ public class FileService {
         }
     }
 
-    public boolean deleteFile(String filename, String username) throws IOException {
+    public boolean deleteFile(String filename, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
                 
         Optional<FileMetadata> metadataOpt = fileMetadataRepository.findByUserAndStoredName(user, filename);
         if (metadataOpt.isPresent()) {
-            Path file = Paths.get(UPLOAD_DIR).resolve(filename);
-            Files.deleteIfExists(file); // Ignore result, the file might already be missing from disk
-            
-            fileMetadataRepository.delete(metadataOpt.get());
+            FileMetadata metadata = metadataOpt.get();
+            metadata.setDeletedAt(LocalDateTime.now());
+            fileMetadataRepository.save(metadata);
             webSocketHandler.broadcastFileUpdate();
             return true;
         }
         return false;
+    }
+
+    public boolean restoreFile(String filename, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                
+        Optional<FileMetadata> metadataOpt = fileMetadataRepository.findByUserAndStoredName(user, filename);
+        if (metadataOpt.isPresent()) {
+            FileMetadata metadata = metadataOpt.get();
+            metadata.setDeletedAt(null);
+            fileMetadataRepository.save(metadata);
+            webSocketHandler.broadcastFileUpdate();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean permanentlyDeleteFile(String filename, String username) throws IOException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                
+        Optional<FileMetadata> metadataOpt = fileMetadataRepository.findByUserAndStoredName(user, filename);
+        if (metadataOpt.isPresent()) {
+            permanentlyDeleteFile(metadataOpt.get());
+            webSocketHandler.broadcastFileUpdate();
+            return true;
+        }
+        return false;
+    }
+
+    public void permanentlyDeleteFile(FileMetadata metadata) throws IOException {
+        Path file = Paths.get(UPLOAD_DIR).resolve(metadata.getStoredName());
+        Files.deleteIfExists(file); // Ignore result, the file might already be missing from disk
+        fileMetadataRepository.delete(metadata);
     }
 }

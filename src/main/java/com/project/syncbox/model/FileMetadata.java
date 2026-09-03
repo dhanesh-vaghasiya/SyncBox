@@ -40,4 +40,8 @@ public class FileMetadata {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
 }
