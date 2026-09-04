@@ -201,71 +201,110 @@
         uploadFile(file, false);
       });
 
-      function uploadFile(file, force) {
-        const formData = new FormData();
-        formData.append("file", file);
-
+      async function uploadFile(file, force, sessionId = null) {
+        const CHUNK_SIZE = 20 * 1024 * 1024; // 20 MB
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        
         const messageDiv = document.getElementById("uploadMessage");
         const progressContainer = document.getElementById("progressContainer");
         const progressBar = document.getElementById("progressBar");
         const progressText = document.getElementById("progressText");
 
-        messageDiv.innerText = "";
-        progressContainer.style.display = "block";
-        progressBar.style.width = "0%";
-        progressText.innerText = "0%";
+        if (!sessionId) {
+            messageDiv.innerText = "Initializing upload...";
+            progressContainer.style.display = "block";
+            progressBar.style.width = "0%";
+            progressText.innerText = "0%";
+            messageDiv.style.color = "#333";
+            
+            try {
+                const initFormData = new FormData();
+                initFormData.append("originalName", file.name);
+                initFormData.append("contentType", file.type || "application/octet-stream");
+                initFormData.append("totalSize", file.size);
+                initFormData.append("totalChunks", totalChunks);
 
-        const xhr = new XMLHttpRequest();
+                const initResponse = await fetch("/api/files/upload/session", {
+                    method: "POST",
+                    body: initFormData
+                });
 
-        xhr.upload.addEventListener("progress", (event) => {
-          if (event.lengthComputable) {
-            const percentComplete = Math.round(
-              (event.loaded / event.total) * 100,
-            );
-            progressBar.style.width = percentComplete + "%";
-            progressText.innerText = percentComplete + "%";
-          }
-        });
+                if (!initResponse.ok) {
+                    throw new Error("Failed to initialize upload session.");
+                }
 
-        xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            messageDiv.innerText = xhr.responseText;
-            messageDiv.style.color = "#4CAF50";
-            document.getElementById("fileInput").value = "";
-          } else if (xhr.status === 409) {
-            progressContainer.style.display = "none";
-            if (
-              confirm(
-                "An identical file already exists. Are you sure you want to upload this duplicate?",
-              )
-            ) {
-              uploadFile(file, true);
-              return; // Prevent clearing the progress container timeout below
-            } else {
-              messageDiv.innerText = "Upload cancelled.";
-              messageDiv.style.color = "#f44336";
-              document.getElementById("fileInput").value = "";
+                const session = await initResponse.json();
+                sessionId = session.id;
+            } catch (e) {
+                messageDiv.innerText = e.message;
+                messageDiv.style.color = "#f44336";
+                progressContainer.style.display = "none";
+                return;
             }
-          } else {
-            messageDiv.innerText = "Upload failed: " + xhr.responseText;
+        }
+
+        try {
+            messageDiv.innerText = force ? "Finalizing duplicate..." : "Uploading chunks...";
+            
+            if (!force) {
+                // Upload chunks sequentially
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const chunk = file.slice(start, end);
+                    
+                    const chunkFormData = new FormData();
+                    chunkFormData.append("file", chunk, file.name);
+
+                    const chunkResponse = await fetch(`/api/files/upload/session/${sessionId}/part/${i}`, {
+                        method: "PUT",
+                        body: chunkFormData
+                    });
+
+                    if (!chunkResponse.ok) {
+                        throw new Error(`Failed to upload part ${i + 1} of ${totalChunks}`);
+                    }
+
+                    // Update progress
+                    const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
+                    progressBar.style.width = percentComplete + "%";
+                    progressText.innerText = percentComplete + "%";
+                }
+            }
+
+            messageDiv.innerText = "Finalizing upload...";
+            
+            // Complete upload
+            const completeResponse = await fetch(`/api/files/upload/session/${sessionId}/complete?force=${force}`, {
+                method: "POST"
+            });
+
+            if (completeResponse.ok) {
+                messageDiv.innerText = "File uploaded successfully!";
+                messageDiv.style.color = "#4CAF50";
+                document.getElementById("fileInput").value = "";
+                setTimeout(() => {
+                    progressContainer.style.display = "none";
+                }, 3000);
+            } else if (completeResponse.status === 409) {
+                if (confirm("An identical file already exists. Are you sure you want to upload this duplicate?")) {
+                    // Retry just the complete call with force=true and the existing sessionId
+                    uploadFile(file, true, sessionId);
+                } else {
+                    messageDiv.innerText = "Upload cancelled.";
+                    messageDiv.style.color = "#f44336";
+                    document.getElementById("fileInput").value = "";
+                    progressContainer.style.display = "none";
+                }
+            } else {
+                throw new Error(await completeResponse.text());
+            }
+
+        } catch (e) {
+            messageDiv.innerText = "Upload failed: " + e.message;
             messageDiv.style.color = "#f44336";
-          }
-          setTimeout(() => {
             progressContainer.style.display = "none";
-          }, 3000);
-        });
-
-        xhr.addEventListener("error", () => {
-          messageDiv.innerText = "Upload failed due to network error.";
-          messageDiv.style.color = "#f44336";
-          progressContainer.style.display = "none";
-        });
-
-        const url = force
-          ? "/api/files/upload?force=true"
-          : "/api/files/upload";
-        xhr.open("POST", url, true);
-        xhr.send(formData);
+        }
       }
 
       async function fetchFiles() {

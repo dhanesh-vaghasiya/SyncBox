@@ -30,11 +30,16 @@ public class FileService {
     private final FileWebSocketHandler webSocketHandler;
     private final FileMetadataRepository fileMetadataRepository;
     private final UserRepository userRepository;
+    private final com.project.syncbox.repository.UploadSessionRepository uploadSessionRepository;
 
-    public FileService(FileWebSocketHandler webSocketHandler, FileMetadataRepository fileMetadataRepository, UserRepository userRepository) {
+    public FileService(FileWebSocketHandler webSocketHandler, 
+                       FileMetadataRepository fileMetadataRepository, 
+                       UserRepository userRepository,
+                       com.project.syncbox.repository.UploadSessionRepository uploadSessionRepository) {
         this.webSocketHandler = webSocketHandler;
         this.fileMetadataRepository = fileMetadataRepository;
         this.userRepository = userRepository;
+        this.uploadSessionRepository = uploadSessionRepository;
         File directory = new File(UPLOAD_DIR);
         if (!directory.exists()) {
             directory.mkdirs();
@@ -198,5 +203,116 @@ public class FileService {
         Path file = Paths.get(UPLOAD_DIR).resolve(metadata.getStoredName());
         Files.deleteIfExists(file); // Ignore result, the file might already be missing from disk
         fileMetadataRepository.delete(metadata);
+    }
+
+    public com.project.syncbox.model.UploadSession createUploadSession(String originalFilename, String contentType, long totalSize, int totalChunks, String username) throws IOException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (originalFilename == null) {
+            originalFilename = "unknown";
+        }
+
+        com.project.syncbox.model.UploadSession session = new com.project.syncbox.model.UploadSession();
+        session.setId(java.util.UUID.randomUUID().toString());
+        session.setUser(user);
+        session.setOriginalName(originalFilename);
+        session.setContentType(contentType);
+        session.setTotalSize(totalSize);
+        session.setTotalChunks(totalChunks);
+        session.setCreatedAt(LocalDateTime.now());
+
+        uploadSessionRepository.save(session);
+
+        // Create temporary directory for chunks
+        Path tempDir = Paths.get(UPLOAD_DIR + "temp_" + session.getId());
+        if (!Files.exists(tempDir)) {
+            Files.createDirectories(tempDir);
+        }
+
+        return session;
+    }
+
+    public void uploadChunk(String sessionId, int chunkIndex, MultipartFile file, String username) throws IOException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        com.project.syncbox.model.UploadSession session = uploadSessionRepository.findByIdAndUser(sessionId, user)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+
+        Path tempDir = Paths.get(UPLOAD_DIR + "temp_" + session.getId());
+        if (!Files.exists(tempDir)) {
+            throw new IOException("Temporary directory for session not found.");
+        }
+
+        Path chunkPath = tempDir.resolve("part_" + chunkIndex);
+        Files.write(chunkPath, file.getBytes());
+    }
+
+    public void completeUpload(String sessionId, boolean force, String username) throws IOException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        com.project.syncbox.model.UploadSession session = uploadSessionRepository.findByIdAndUser(sessionId, user)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+
+        Path tempDir = Paths.get(UPLOAD_DIR + "temp_" + session.getId());
+        if (!Files.exists(tempDir)) {
+            throw new IOException("Temporary directory for session not found.");
+        }
+
+        // Verify all chunks
+        for (int i = 0; i < session.getTotalChunks(); i++) {
+            Path chunkPath = tempDir.resolve("part_" + i);
+            if (!Files.exists(chunkPath)) {
+                throw new IllegalArgumentException("Missing chunk: " + i);
+            }
+        }
+
+        // Merge chunks
+        Path mergedFilePath = tempDir.resolve("merged_file");
+        try (java.io.OutputStream out = Files.newOutputStream(mergedFilePath)) {
+            for (int i = 0; i < session.getTotalChunks(); i++) {
+                Path chunkPath = tempDir.resolve("part_" + i);
+                Files.copy(chunkPath, out);
+            }
+        }
+
+        // Calculate Checksum
+        byte[] mergedBytes = Files.readAllBytes(mergedFilePath);
+        String checksum = calculateChecksum(mergedBytes);
+
+        if (!force && fileMetadataRepository.existsByUserAndChecksumAndDeletedAtIsNull(user, checksum)) {
+            // Keep the temp dir and merged file so they can retry with force=true
+            throw new DuplicateFileException("DUPLICATE_CHECKSUM");
+        }
+
+        // Generate final stored name
+        String storedFilename = getUniqueFilename(session.getOriginalName(), user);
+        Path finalPath = Paths.get(UPLOAD_DIR + storedFilename);
+
+        // Move merged file to final path
+        Files.move(mergedFilePath, finalPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+        // Cleanup chunks
+        for (int i = 0; i < session.getTotalChunks(); i++) {
+            Files.deleteIfExists(tempDir.resolve("part_" + i));
+        }
+        Files.deleteIfExists(tempDir);
+
+        // Save FileMetadata
+        FileMetadata metadata = new FileMetadata();
+        metadata.setOriginalName(session.getOriginalName());
+        metadata.setStoredName(storedFilename);
+        metadata.setSize(session.getTotalSize());
+        metadata.setContentType(session.getContentType());
+        metadata.setUploadedAt(LocalDateTime.now());
+        metadata.setUser(user);
+        metadata.setChecksum(checksum);
+        fileMetadataRepository.save(metadata);
+
+        uploadSessionRepository.delete(session);
+
+        webSocketHandler.broadcastFileUpdate();
     }
 }

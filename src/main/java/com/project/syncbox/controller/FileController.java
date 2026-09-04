@@ -43,6 +43,56 @@ public class FileController {
         }
     }
 
+    @PostMapping("/upload/session")
+    public ResponseEntity<com.project.syncbox.model.UploadSession> createUploadSession(
+            @RequestParam("originalName") String originalName,
+            @RequestParam("contentType") String contentType,
+            @RequestParam("totalSize") long totalSize,
+            @RequestParam("totalChunks") int totalChunks,
+            Principal principal) {
+        try {
+            com.project.syncbox.model.UploadSession session = fileService.createUploadSession(
+                    originalName, contentType, totalSize, totalChunks, principal.getName());
+            return ResponseEntity.ok(session);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PutMapping("/upload/session/{sessionId}/part/{chunkIndex}")
+    public ResponseEntity<String> uploadChunk(
+            @PathVariable String sessionId,
+            @PathVariable int chunkIndex,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
+        try {
+            fileService.uploadChunk(sessionId, chunkIndex, file, principal.getName());
+            return ResponseEntity.ok("Chunk uploaded");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Failed to upload chunk.");
+        }
+    }
+
+    @PostMapping("/upload/session/{sessionId}/complete")
+    public ResponseEntity<String> completeUpload(
+            @PathVariable String sessionId,
+            @RequestParam(value = "force", defaultValue = "false") boolean force,
+            Principal principal) {
+        try {
+            fileService.completeUpload(sessionId, force, principal.getName());
+            return ResponseEntity.ok("File uploaded successfully");
+        } catch (DuplicateFileException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Failed to complete upload.");
+        }
+    }
+
     @GetMapping("/list")
     public ResponseEntity<List<FileMetadata>> listFiles(Principal principal) {
         return ResponseEntity.ok(fileService.getFileList(principal.getName()));
