@@ -249,6 +249,27 @@ public class FileService {
         Files.write(chunkPath, file.getBytes());
     }
 
+    public com.project.syncbox.dto.SessionStatusDTO getSessionStatus(String sessionId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        com.project.syncbox.model.UploadSession session = uploadSessionRepository.findByIdAndUser(sessionId, user)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+
+        Path tempDir = Paths.get(UPLOAD_DIR + "temp_" + session.getId());
+        java.util.List<Integer> uploadedChunks = new java.util.ArrayList<>();
+
+        if (Files.exists(tempDir)) {
+            for (int i = 0; i < session.getTotalChunks(); i++) {
+                if (Files.exists(tempDir.resolve("part_" + i))) {
+                    uploadedChunks.add(i);
+                }
+            }
+        }
+        
+        return new com.project.syncbox.dto.SessionStatusDTO(session, uploadedChunks);
+    }
+
     public void completeUpload(String sessionId, boolean force, String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

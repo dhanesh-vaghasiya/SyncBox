@@ -60,6 +60,21 @@ public class FileController {
         }
     }
 
+    @GetMapping("/upload/session/{sessionId}")
+    public ResponseEntity<com.project.syncbox.dto.SessionStatusDTO> getSessionStatus(
+            @PathVariable String sessionId,
+            Principal principal) {
+        try {
+            com.project.syncbox.dto.SessionStatusDTO status = fileService.getSessionStatus(sessionId, principal.getName());
+            return ResponseEntity.ok(status);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @PutMapping("/upload/session/{sessionId}/part/{chunkIndex}")
     public ResponseEntity<String> uploadChunk(
             @PathVariable String sessionId,

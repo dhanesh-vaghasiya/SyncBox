@@ -177,6 +177,10 @@
           <div class="progress-bar" id="progressBar"></div>
           <div class="progress-text" id="progressText">0%</div>
         </div>
+        <div id="pauseResumeContainer" style="display: none; margin-top: 10px; text-align: center; gap: 10px;">
+            <button type="button" id="pauseBtn" style="background-color: #ff9800; display: none; width: 100%;">Pause Upload</button>
+            <button type="button" id="resumeBtn" style="background-color: #2196f3; display: none; width: 100%;">Resume Upload</button>
+        </div>
       </form>
       <div id="uploadMessage" class="message"></div>
 
@@ -205,23 +209,82 @@
         uploadFile(file, false);
       });
 
+      let currentUploadAbortController = null;
+      let isUploadPaused = false;
+      
+      document.getElementById("pauseBtn").addEventListener("click", () => {
+          isUploadPaused = true;
+          if (currentUploadAbortController) {
+              currentUploadAbortController.abort();
+          }
+          document.getElementById("pauseBtn").style.display = "none";
+          document.getElementById("resumeBtn").style.display = "inline-block";
+          document.getElementById("uploadMessage").innerText = "Upload paused.";
+      });
+
+      document.getElementById("resumeBtn").addEventListener("click", () => {
+          isUploadPaused = false;
+          document.getElementById("resumeBtn").style.display = "none";
+          document.getElementById("pauseBtn").style.display = "inline-block";
+          
+          const fileInput = document.getElementById("fileInput");
+          const file = fileInput.files[0];
+          if (file) {
+              const storageKey = 'upload_session_' + file.name + '_' + file.size;
+              const sessionId = localStorage.getItem(storageKey);
+              if (sessionId) {
+                  uploadFile(file, false, sessionId);
+              } else {
+                  uploadFile(file, false);
+              }
+          }
+      });
+
       async function uploadFile(file, force, sessionId = null) {
         const CHUNK_SIZE = 20 * 1024 * 1024; // 20 MB
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const storageKey = 'upload_session_' + file.name + '_' + file.size;
         
         const messageDiv = document.getElementById("uploadMessage");
         const progressContainer = document.getElementById("progressContainer");
         const progressBar = document.getElementById("progressBar");
         const progressText = document.getElementById("progressText");
         const submitBtn = document.querySelector('#uploadForm button[type="submit"]');
+        const pauseResumeContainer = document.getElementById("pauseResumeContainer");
+        const pauseBtn = document.getElementById("pauseBtn");
+        const resumeBtn = document.getElementById("resumeBtn");
         
         submitBtn.disabled = true;
+        isUploadPaused = false;
+
+        let uploadedChunks = [];
+
+        if (!sessionId) {
+            sessionId = localStorage.getItem(storageKey);
+        }
+
+        if (sessionId) {
+            try {
+                const statusRes = await fetch(`/api/files/upload/session/${sessionId}`);
+                if (statusRes.ok) {
+                    const status = await statusRes.json();
+                    uploadedChunks = status.uploadedChunks || [];
+                } else {
+                    sessionId = null;
+                    localStorage.removeItem(storageKey);
+                }
+            } catch (e) {
+                sessionId = null;
+                localStorage.removeItem(storageKey);
+            }
+        }
 
         if (!sessionId) {
             messageDiv.innerText = "Initializing upload...";
             progressContainer.style.display = "block";
             progressBar.style.width = "0%";
             progressText.innerText = "0%";
+            pauseResumeContainer.style.display = "none";
             messageDiv.style.color = "#333";
             
             try {
@@ -242,6 +305,7 @@
 
                 const session = await initResponse.json();
                 sessionId = session.id;
+                localStorage.setItem(storageKey, sessionId);
             } catch (e) {
                 messageDiv.innerText = e.message;
                 messageDiv.style.color = "#f44336";
@@ -253,10 +317,24 @@
 
         try {
             messageDiv.innerText = force ? "Finalizing duplicate..." : "Uploading chunks...";
+            progressContainer.style.display = "block";
+            pauseResumeContainer.style.display = "flex";
+            pauseBtn.style.display = "inline-block";
+            resumeBtn.style.display = "none";
             
             if (!force) {
-                // Upload chunks sequentially
                 for (let i = 0; i < totalChunks; i++) {
+                    if (isUploadPaused) {
+                        return;
+                    }
+
+                    if (uploadedChunks.includes(i)) {
+                        const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
+                        progressBar.style.width = percentComplete + "%";
+                        progressText.innerText = percentComplete + "%";
+                        continue;
+                    }
+
                     const start = i * CHUNK_SIZE;
                     const end = Math.min(start + CHUNK_SIZE, file.size);
                     const chunk = file.slice(start, end);
@@ -264,25 +342,39 @@
                     const chunkFormData = new FormData();
                     chunkFormData.append("file", chunk, file.name);
 
-                    const chunkResponse = await fetch(`/api/files/upload/session/${sessionId}/part/${i}`, {
-                        method: "PUT",
-                        body: chunkFormData
-                    });
+                    currentUploadAbortController = new AbortController();
 
-                    if (!chunkResponse.ok) {
-                        throw new Error(`Failed to upload part ${i + 1} of ${totalChunks}`);
+                    try {
+                        const chunkResponse = await fetch(`/api/files/upload/session/${sessionId}/part/${i}`, {
+                            method: "PUT",
+                            body: chunkFormData,
+                            signal: currentUploadAbortController.signal
+                        });
+
+                        if (!chunkResponse.ok) {
+                            throw new Error(`Failed to upload part ${i + 1} of ${totalChunks}`);
+                        }
+
+                        uploadedChunks.push(i);
+
+                        const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
+                        progressBar.style.width = percentComplete + "%";
+                        progressText.innerText = percentComplete + "%";
+                    } catch (e) {
+                        if (e.name === 'AbortError') {
+                            console.log("Upload paused at chunk", i);
+                            return;
+                        }
+                        throw e;
                     }
-
-                    // Update progress
-                    const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
-                    progressBar.style.width = percentComplete + "%";
-                    progressText.innerText = percentComplete + "%";
                 }
             }
+            
+            if (isUploadPaused) return;
 
             messageDiv.innerText = "Finalizing upload...";
+            pauseResumeContainer.style.display = "none";
             
-            // Complete upload
             const completeResponse = await fetch(`/api/files/upload/session/${sessionId}/complete?force=${force}`, {
                 method: "POST"
             });
@@ -291,19 +383,20 @@
                 messageDiv.innerText = "File uploaded successfully!";
                 messageDiv.style.color = "#4CAF50";
                 document.getElementById("fileInput").value = "";
+                localStorage.removeItem(storageKey);
                 setTimeout(() => {
                     progressContainer.style.display = "none";
                 }, 3000);
                 submitBtn.disabled = false;
             } else if (completeResponse.status === 409) {
                 if (confirm("An identical file already exists. Are you sure you want to upload this duplicate?")) {
-                    // Retry just the complete call with force=true and the existing sessionId
                     uploadFile(file, true, sessionId);
                 } else {
                     messageDiv.innerText = "Upload cancelled.";
                     messageDiv.style.color = "#f44336";
                     document.getElementById("fileInput").value = "";
                     progressContainer.style.display = "none";
+                    localStorage.removeItem(storageKey);
                     submitBtn.disabled = false;
                 }
             } else {
@@ -314,6 +407,7 @@
             messageDiv.innerText = "Upload failed: " + e.message;
             messageDiv.style.color = "#f44336";
             progressContainer.style.display = "none";
+            pauseResumeContainer.style.display = "none";
             submitBtn.disabled = false;
         }
       }
