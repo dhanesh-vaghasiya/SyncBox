@@ -47,8 +47,12 @@
         font-size: 16px;
         transition: background 0.3s;
       }
-      button:hover {
+      button:hover:not(:disabled) {
         background-color: #45a049;
+      }
+      button:disabled {
+        background-color: #a5d6a7;
+        cursor: not-allowed;
       }
       .message {
         margin-bottom: 20px;
@@ -209,6 +213,9 @@
         const progressContainer = document.getElementById("progressContainer");
         const progressBar = document.getElementById("progressBar");
         const progressText = document.getElementById("progressText");
+        const submitBtn = document.querySelector('#uploadForm button[type="submit"]');
+        
+        submitBtn.disabled = true;
 
         if (!sessionId) {
             messageDiv.innerText = "Initializing upload...";
@@ -239,6 +246,7 @@
                 messageDiv.innerText = e.message;
                 messageDiv.style.color = "#f44336";
                 progressContainer.style.display = "none";
+                submitBtn.disabled = false;
                 return;
             }
         }
@@ -286,6 +294,7 @@
                 setTimeout(() => {
                     progressContainer.style.display = "none";
                 }, 3000);
+                submitBtn.disabled = false;
             } else if (completeResponse.status === 409) {
                 if (confirm("An identical file already exists. Are you sure you want to upload this duplicate?")) {
                     // Retry just the complete call with force=true and the existing sessionId
@@ -295,6 +304,7 @@
                     messageDiv.style.color = "#f44336";
                     document.getElementById("fileInput").value = "";
                     progressContainer.style.display = "none";
+                    submitBtn.disabled = false;
                 }
             } else {
                 throw new Error(await completeResponse.text());
@@ -304,6 +314,7 @@
             messageDiv.innerText = "Upload failed: " + e.message;
             messageDiv.style.color = "#f44336";
             progressContainer.style.display = "none";
+            submitBtn.disabled = false;
         }
       }
 
