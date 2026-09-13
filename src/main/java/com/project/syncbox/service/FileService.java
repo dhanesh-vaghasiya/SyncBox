@@ -3,6 +3,7 @@ package com.project.syncbox.service;
 import com.project.syncbox.exception.DuplicateFileException;
 import com.project.syncbox.handler.FileWebSocketHandler;
 import com.project.syncbox.model.FileMetadata;
+import com.project.syncbox.model.Folder;
 import com.project.syncbox.model.User;
 import com.project.syncbox.repository.FileMetadataRepository;
 import com.project.syncbox.repository.UserRepository;
@@ -32,21 +33,25 @@ public class FileService {
     private final UserRepository userRepository;
     private final com.project.syncbox.repository.UploadSessionRepository uploadSessionRepository;
 
+    private final com.project.syncbox.repository.FolderRepository folderRepository;
+
     public FileService(FileWebSocketHandler webSocketHandler, 
                        FileMetadataRepository fileMetadataRepository, 
                        UserRepository userRepository,
-                       com.project.syncbox.repository.UploadSessionRepository uploadSessionRepository) {
+                       com.project.syncbox.repository.UploadSessionRepository uploadSessionRepository,
+                       com.project.syncbox.repository.FolderRepository folderRepository) {
         this.webSocketHandler = webSocketHandler;
         this.fileMetadataRepository = fileMetadataRepository;
         this.userRepository = userRepository;
         this.uploadSessionRepository = uploadSessionRepository;
+        this.folderRepository = folderRepository;
         File directory = new File(UPLOAD_DIR);
         if (!directory.exists()) {
             directory.mkdirs();
         }
     }
 
-    public void saveFile(MultipartFile file, String username, boolean force) throws IOException {
+    public void saveFile(MultipartFile file, String username, boolean force, Long folderId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -59,7 +64,7 @@ public class FileService {
         // Calculate checksum
         String checksum = calculateChecksum(bytes);
         
-        if (!force && fileMetadataRepository.existsByUserAndChecksumAndDeletedAtIsNull(user, checksum)) {
+        if (!force && checkFileExists(checksum, username, folderId)) {
             throw new DuplicateFileException("DUPLICATE_CHECKSUM");
         }
         
@@ -81,6 +86,11 @@ public class FileService {
         metadata.setUploadedAt(LocalDateTime.now());
         metadata.setUser(user);
         metadata.setChecksum(checksum);
+        if (folderId != null) {
+            Folder folder = folderRepository.findByIdAndUserAndDeletedAtIsNull(folderId, user)
+                    .orElseThrow(() -> new IllegalArgumentException("Folder not found"));
+            metadata.setFolder(folder);
+        }
         
         fileMetadataRepository.save(metadata);
         
@@ -125,16 +135,20 @@ public class FileService {
         return newFilename;
     }
 
-    public List<FileMetadata> getFileList(String username) {
+    public List<FileMetadata> getFileList(String username, Long folderId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        return fileMetadataRepository.findAllByUserAndDeletedAtIsNull(user);
+        if (folderId == null) {
+            return fileMetadataRepository.findAllByUserAndFolderIsNullAndDeletedAtIsNull(user);
+        } else {
+            return fileMetadataRepository.findAllByUserAndFolderIdAndDeletedAtIsNull(user, folderId);
+        }
     }
 
     public List<FileMetadata> getTrashedFileList(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        return fileMetadataRepository.findAllByUserAndDeletedAtIsNotNull(user);
+        return fileMetadataRepository.findTopLevelTrashedFiles(user);
     }
 
     public Resource loadFileAsResource(String filename, String username) throws MalformedURLException {
@@ -205,7 +219,26 @@ public class FileService {
         fileMetadataRepository.delete(metadata);
     }
 
-    public com.project.syncbox.model.UploadSession createUploadSession(String originalFilename, String contentType, long totalSize, int totalChunks, String username) throws IOException {
+    public boolean moveFile(String filename, Long targetFolderId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        FileMetadata metadata = fileMetadataRepository.findByUserAndStoredName(user, filename)
+                .orElseThrow(() -> new IllegalArgumentException("File not found"));
+
+        if (targetFolderId != null) {
+            Folder targetFolder = folderRepository.findByIdAndUserAndDeletedAtIsNull(targetFolderId, user)
+                    .orElseThrow(() -> new IllegalArgumentException("Target folder not found"));
+            metadata.setFolder(targetFolder);
+        } else {
+            metadata.setFolder(null);
+        }
+
+        fileMetadataRepository.save(metadata);
+        webSocketHandler.broadcastFileUpdate();
+        return true;
+    }
+    public com.project.syncbox.model.UploadSession createUploadSession(String originalFilename, String contentType, long totalSize, int totalChunks, String username, Long folderId) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -221,6 +254,12 @@ public class FileService {
         session.setTotalSize(totalSize);
         session.setTotalChunks(totalChunks);
         session.setCreatedAt(LocalDateTime.now());
+        
+        if (folderId != null) {
+            Folder folder = folderRepository.findByIdAndUserAndDeletedAtIsNull(folderId, user)
+                    .orElseThrow(() -> new IllegalArgumentException("Folder not found"));
+            session.setFolder(folder);
+        }
 
         uploadSessionRepository.save(session);
 
@@ -270,10 +309,14 @@ public class FileService {
         return new com.project.syncbox.dto.SessionStatusDTO(session, uploadedChunks);
     }
 
-    public boolean checkFileExists(String checksum, String username) {
+    public boolean checkFileExists(String checksum, String username, Long folderId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        return fileMetadataRepository.existsByUserAndChecksumAndDeletedAtIsNull(user, checksum);
+        if (folderId == null) {
+            return fileMetadataRepository.existsByUserAndFolderIsNullAndChecksumAndDeletedAtIsNull(user, checksum);
+        } else {
+            return fileMetadataRepository.existsByUserAndFolderIdAndChecksumAndDeletedAtIsNull(user, folderId, checksum);
+        }
     }
 
     public void completeUpload(String sessionId, String duplicateAction, String username) throws IOException {
@@ -309,14 +352,16 @@ public class FileService {
         byte[] mergedBytes = Files.readAllBytes(mergedFilePath);
         String checksum = calculateChecksum(mergedBytes);
 
-        if (fileMetadataRepository.existsByUserAndChecksumAndDeletedAtIsNull(user, checksum)) {
+        Long folderId = session.getFolder() != null ? session.getFolder().getId() : null;
+
+        if (checkFileExists(checksum, username, folderId)) {
             if ("NONE".equals(duplicateAction)) {
                 // Keep the temp dir and merged file so they can retry
                 throw new DuplicateFileException("DUPLICATE_CHECKSUM");
             } else if ("REPLACE".equals(duplicateAction)) {
-                // Find and soft-delete existing files with this checksum
-                java.util.List<FileMetadata> allFiles = fileMetadataRepository.findAllByUserAndDeletedAtIsNull(user);
-                for (FileMetadata fm : allFiles) {
+                // Find and soft-delete existing files with this checksum in this folder
+                java.util.List<FileMetadata> allFilesInFolder = getFileList(username, folderId);
+                for (FileMetadata fm : allFilesInFolder) {
                     if (checksum.equals(fm.getChecksum())) {
                         fm.setDeletedAt(LocalDateTime.now());
                         fileMetadataRepository.save(fm);
@@ -348,6 +393,7 @@ public class FileService {
         metadata.setUploadedAt(LocalDateTime.now());
         metadata.setUser(user);
         metadata.setChecksum(checksum);
+        metadata.setFolder(session.getFolder());
         fileMetadataRepository.save(metadata);
 
         uploadSessionRepository.delete(session);

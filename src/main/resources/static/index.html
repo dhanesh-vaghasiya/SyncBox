@@ -20,122 +20,51 @@
         border-radius: 8px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         width: 100%;
-        max-width: 500px;
+        max-width: 650px;
       }
-      h2 {
-        margin-top: 0;
-        color: #4caf50;
-      }
-      form {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        margin-bottom: 20px;
-      }
-      input[type="file"] {
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+      h2 { margin-top: 0; color: #4caf50; }
+      form { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+      input[type="file"], input[type="text"] {
+        padding: 10px; border: 1px solid #ddd; border-radius: 4px;
       }
       button {
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 16px;
-        transition: background 0.3s;
+        background-color: #4caf50; color: white; border: none; padding: 10px 15px;
+        border-radius: 4px; cursor: pointer; font-size: 16px; transition: background 0.3s;
       }
-      button:hover:not(:disabled) {
-        background-color: #45a049;
-      }
-      button:disabled {
-        background-color: #a5d6a7;
-        cursor: not-allowed;
-      }
-      .message {
-        margin-bottom: 20px;
-        font-weight: bold;
-        color: #555;
-      }
-      .file-list h3 {
-        margin-top: 0;
-        border-bottom: 2px solid #4caf50;
-        padding-bottom: 10px;
-      }
-      ul {
-        list-style-type: none;
-        padding: 0;
-      }
+      button:hover:not(:disabled) { background-color: #45a049; }
+      button:disabled { background-color: #a5d6a7; cursor: not-allowed; }
+      
+      .message { margin-bottom: 20px; font-weight: bold; color: #555; }
+      
+      .file-list h3 { margin-top: 0; border-bottom: 2px solid #4caf50; padding-bottom: 10px; }
+      ul { list-style-type: none; padding: 0; }
       li {
-        background: #f9f9f9;
-        margin-bottom: 8px;
-        padding: 10px;
-        border-radius: 4px;
-        border-left: 4px solid #4caf50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        background: #f9f9f9; margin-bottom: 8px; padding: 10px; border-radius: 4px;
+        border-left: 4px solid #4caf50; display: flex; justify-content: space-between; align-items: center;
       }
-      .download-btn {
-        background-color: #2196f3;
-        color: white;
-        padding: 5px 10px;
-        text-decoration: none;
-        border-radius: 3px;
-        font-size: 14px;
-        transition: background 0.3s;
+      
+      .breadcrumb {
+        padding: 10px; background: #e8f5e9; border-radius: 4px; margin-bottom: 15px; font-weight: bold;
       }
-      .download-btn:hover {
-        background-color: #0b7dda;
+      .breadcrumb span { cursor: pointer; color: #2196f3; }
+      .breadcrumb span:hover { text-decoration: underline; }
+
+      .action-btn {
+        background-color: #2196f3; color: white; padding: 5px 10px;
+        text-decoration: none; border-radius: 3px; font-size: 14px;
+        border: none; cursor: pointer; transition: background 0.3s; margin-left: 5px;
       }
-      .delete-btn {
-        background-color: #f44336;
-        color: white;
-        padding: 5px 10px;
-        text-decoration: none;
-        border-radius: 3px;
-        font-size: 14px;
-        border: none;
-        cursor: pointer;
-        transition: background 0.3s;
-        margin-left: 5px;
-      }
-      .delete-btn:hover {
-        background-color: #d32f2f;
-      }
-      .action-buttons {
-        display: flex;
-        gap: 5px;
-      }
-      .progress-container {
-        width: 100%;
-        background-color: #e0e0e0;
-        border-radius: 4px;
-        margin-top: 10px;
-        display: none;
-        position: relative;
-        height: 20px;
-      }
-      .progress-bar {
-        width: 0%;
-        height: 100%;
-        background-color: #4caf50;
-        border-radius: 4px;
-        transition: width 0.2s;
-      }
-      .progress-text {
-        position: absolute;
-        width: 100%;
-        text-align: center;
-        top: 0;
-        left: 0;
-        line-height: 20px;
-        font-size: 12px;
-        color: #333;
-        font-weight: bold;
-      }
+      .action-btn:hover { background-color: #0b7dda; }
+      .delete-btn { background-color: #f44336; }
+      .delete-btn:hover { background-color: #d32f2f; }
+      .rename-btn { background-color: #ff9800; }
+      .rename-btn:hover { background-color: #e68a00; }
+      .action-buttons { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+      
+      .progress-container { width: 100%; background-color: #e0e0e0; border-radius: 4px; margin-top: 10px; display: none; position: relative; height: 20px; }
+      .progress-bar { width: 0%; height: 100%; background-color: #4caf50; border-radius: 4px; transition: width 0.2s; }
+      .progress-text { position: absolute; width: 100%; text-align: center; top: 0; left: 0; line-height: 20px; font-size: 12px; color: #333; font-weight: bold; }
+      
       .modal-overlay {
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(0,0,0,0.5); display: none;
@@ -145,50 +74,32 @@
         background: #fff; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.2);
       }
-      .modal h3 { margin-top: 0; color: #f44336; }
+      .modal h3 { margin-top: 0; color: #4caf50; }
       .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-      .modal-btn { padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
-      .btn-keep { background: #4caf50; color: #fff; }
-      .btn-replace { background: #ff9800; color: #fff; }
+      .modal-btn { padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; color: #fff; }
       .btn-cancel { background: #e0e0e0; color: #333; }
+      
+      .item-name { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+      .item-name:hover { text-decoration: underline; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   </head>
   <body>
     <div class="container">
-      <div
-        style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-        "
-      >
-        <h2 style="margin: 0">Upload a File</h2>
-        <form
-          action="/logout"
-          method="post"
-          style="margin: 0; display: inline-block"
-        >
-          <button
-            type="submit"
-            style="
-              background-color: #f44336;
-              padding: 8px 12px;
-              font-size: 14px;
-              border-radius: 4px;
-              border: none;
-              color: white;
-              cursor: pointer;
-            "
-          >
-            Logout
-          </button>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0">SyncBox</h2>
+        <form action="/logout" method="post" style="margin: 0; display: inline-block">
+          <button type="submit" style="background-color: #f44336; padding: 8px 12px; font-size: 14px;">Logout</button>
         </form>
       </div>
+      
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <button onclick="showCreateFolderModal()" style="background-color: #2196f3; flex: 1;">+ New Folder</button>
+      </div>
+
       <form id="uploadForm">
         <input type="file" id="fileInput" name="file" required />
-        <button type="submit">Upload</button>
+        <button type="submit">Upload File Here</button>
         <div class="progress-container" id="progressContainer">
           <div class="progress-bar" id="progressBar"></div>
           <div class="progress-text" id="progressText">0%</div>
@@ -201,34 +112,59 @@
       <div id="uploadMessage" class="message"></div>
 
       <div class="file-list">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4caf50; padding-bottom: 10px; margin-bottom: 10px;">
-            <h3 style="margin: 0; border: none; padding: 0;">Uploaded Files</h3>
-        </div>
+        <div id="breadcrumb" class="breadcrumb">Home</div>
         <ul id="filesContainer"></ul>
       </div>
 
       <div class="file-list" style="margin-top: 30px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f44336; padding-bottom: 10px; margin-bottom: 10px;">
+        <div style="border-bottom: 2px solid #f44336; padding-bottom: 10px; margin-bottom: 10px;">
             <h3 style="margin: 0; color: #f44336; border: none; padding: 0;">Trash</h3>
         </div>
         <ul id="trashContainer"></ul>
       </div>
     </div>
 
-    <!-- Duplicate Action Modal -->
+    <!-- Modals -->
     <div id="duplicateModal" class="modal-overlay">
       <div class="modal">
-        <h3>File Already Exists</h3>
-        <p>A file with identical contents was found in your account.</p>
+        <h3 style="color: #f44336;">File Already Exists</h3>
+        <p>A file with identical contents was found in this folder.</p>
         <div class="modal-actions">
-          <button class="modal-btn btn-keep" id="btnKeepBoth">Keep Both (Upload as Duplicate)</button>
-          <button class="modal-btn btn-replace" id="btnReplace">Replace Existing File</button>
-          <button class="modal-btn btn-cancel" id="btnCancel">Cancel Upload</button>
+          <button class="modal-btn" style="background: #4caf50;" id="btnKeepBoth">Keep Both (Upload as Duplicate)</button>
+          <button class="modal-btn" style="background: #ff9800;" id="btnReplace">Replace Existing File</button>
+          <button class="modal-btn btn-cancel" id="btnCancelDup">Cancel Upload</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="createFolderModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Create New Folder</h3>
+        <input type="text" id="folderNameInput" placeholder="Folder Name" style="width: 100%; box-sizing: border-box; margin-top: 10px;" />
+        <div class="modal-actions">
+          <button class="modal-btn" style="background: #2196f3;" onclick="createFolder()">Create</button>
+          <button class="modal-btn btn-cancel" onclick="closeModal('createFolderModal')">Cancel</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="renameFolderModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Rename Folder</h3>
+        <input type="hidden" id="renameFolderId" />
+        <input type="text" id="renameFolderInput" placeholder="New Folder Name" style="width: 100%; box-sizing: border-box; margin-top: 10px;" />
+        <div class="modal-actions">
+          <button class="modal-btn" style="background: #ff9800;" onclick="renameFolder()">Rename</button>
+          <button class="modal-btn btn-cancel" onclick="closeModal('renameFolderModal')">Cancel</button>
         </div>
       </div>
     </div>
 
     <script>
+      let currentFolderId = null;
+      let pendingDuplicateFile = null;
+
+      // Hashing Helper
       function calculateChecksum(file) {
           return new Promise((resolve, reject) => {
               const chunkSize = 20 * 1024 * 1024; // 20MB
@@ -241,41 +177,82 @@
                   const wordBuffer = CryptoJS.lib.WordArray.create(e.target.result);
                   algo.update(wordBuffer);
                   currentChunk++;
-                  
                   if (currentChunk < chunks) {
                       loadNext();
                   } else {
-                      const hash = algo.finalize().toString(CryptoJS.enc.Hex);
-                      resolve(hash);
+                      resolve(algo.finalize().toString(CryptoJS.enc.Hex));
                   }
               };
-
               reader.onerror = reject;
-
               function loadNext() {
                   const start = currentChunk * chunkSize;
                   const end = Math.min(start + chunkSize, file.size);
                   reader.readAsArrayBuffer(file.slice(start, end));
               }
-
               loadNext();
           });
       }
 
-      let pendingDuplicateFile = null;
+      // Modals Logic
+      function showModal(id) { document.getElementById(id).style.display = "flex"; }
+      function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
+      function showCreateFolderModal() {
+          document.getElementById('folderNameInput').value = '';
+          showModal('createFolderModal');
+      }
+
+      function showRenameFolderModal(id, oldName) {
+          document.getElementById('renameFolderId').value = id;
+          document.getElementById('renameFolderInput').value = oldName;
+          showModal('renameFolderModal');
+      }
+
+      async function createFolder() {
+          const name = document.getElementById('folderNameInput').value.trim();
+          if (!name) return;
+          
+          let url = `/api/folders?name=${encodeURIComponent(name)}`;
+          if (currentFolderId) url += `&parentId=${currentFolderId}`;
+          
+          try {
+              const res = await fetch(url, { method: 'POST' });
+              if (res.ok) {
+                  closeModal('createFolderModal');
+                  fetchFiles();
+              } else {
+                  alert("Failed to create folder.");
+              }
+          } catch(e) { alert("Error creating folder"); }
+      }
+
+      async function renameFolder() {
+          const id = document.getElementById('renameFolderId').value;
+          const name = document.getElementById('renameFolderInput').value.trim();
+          if (!name) return;
+          
+          try {
+              const res = await fetch(`/api/folders/${id}/rename?name=${encodeURIComponent(name)}`, { method: 'PUT' });
+              if (res.ok) {
+                  closeModal('renameFolderModal');
+                  fetchFiles();
+              } else {
+                  alert("Failed to rename folder.");
+              }
+          } catch(e) { alert("Error renaming folder"); }
+      }
+
+      // Duplicate Handling
       document.getElementById("btnKeepBoth").addEventListener("click", () => {
-          document.getElementById("duplicateModal").style.display = "none";
+          closeModal("duplicateModal");
           if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "KEEP_BOTH");
       });
-
       document.getElementById("btnReplace").addEventListener("click", () => {
-          document.getElementById("duplicateModal").style.display = "none";
+          closeModal("duplicateModal");
           if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "REPLACE");
       });
-
-      document.getElementById("btnCancel").addEventListener("click", () => {
-          document.getElementById("duplicateModal").style.display = "none";
+      document.getElementById("btnCancelDup").addEventListener("click", () => {
+          closeModal("duplicateModal");
           pendingDuplicateFile = null;
           document.querySelector('#uploadForm button[type="submit"]').disabled = false;
           document.getElementById("uploadMessage").innerText = "Upload cancelled.";
@@ -283,6 +260,7 @@
           document.getElementById("fileInput").value = "";
       });
 
+      // File Upload logic
       document.getElementById("uploadForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const fileInput = document.getElementById("fileInput");
@@ -295,15 +273,19 @@
         submitBtn.disabled = true;
 
         try {
+            messageDiv.innerText = "Verifying uniqueness...";
             const checksum = await calculateChecksum(file);
-            const res = await fetch(`/api/files/check?checksum=${encodeURIComponent(checksum)}`);
+            let url = `/api/files/check?checksum=${encodeURIComponent(checksum)}`;
+            if (currentFolderId) url += `&folderId=${currentFolderId}`;
+
+            const res = await fetch(url);
             if (!res.ok) throw new Error("Failed to verify file.");
             
             const exists = await res.json();
             
             if (exists) {
                 pendingDuplicateFile = file;
-                document.getElementById("duplicateModal").style.display = "flex";
+                showModal("duplicateModal");
             } else {
                 uploadFile(file, "NONE");
             }
@@ -338,16 +320,15 @@
               const storageKey = 'upload_session_' + file.name + '_' + file.size;
               const sessionId = localStorage.getItem(storageKey);
               if (sessionId) {
-                  uploadFile(file, "NONE", sessionId); // Default action on resume, backend should already handle duplicates
+                  uploadFile(file, "NONE", sessionId); 
               } else {
-                  // User must re-verify if starting fresh
                   document.getElementById("uploadForm").dispatchEvent(new Event('submit'));
               }
           }
       });
 
       async function uploadFile(file, duplicateAction, sessionId = null) {
-        const CHUNK_SIZE = 20 * 1024 * 1024; // 20 MB
+        const CHUNK_SIZE = 20 * 1024 * 1024;
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         const storageKey = 'upload_session_' + file.name + '_' + file.size;
         
@@ -400,7 +381,12 @@
                 initFormData.append("totalSize", file.size);
                 initFormData.append("totalChunks", totalChunks);
 
-                const initResponse = await fetch("/api/files/upload/session", {
+                let sessionUrl = "/api/files/upload/session";
+                if (currentFolderId) {
+                    sessionUrl += `?folderId=${currentFolderId}`;
+                }
+
+                const initResponse = await fetch(sessionUrl, {
                     method: "POST",
                     body: initFormData
                 });
@@ -428,56 +414,49 @@
             pauseBtn.style.display = "inline-block";
             resumeBtn.style.display = "none";
             
-            if (duplicateAction !== "NONE" && !sessionId) {
-                // If it was already checked, skip chunks if force/replace? 
-                // Wait, if it's identical, maybe we shouldn't skip? 
-                // The chunk loop is intact.
-            }
-                for (let i = 0; i < totalChunks; i++) {
-                    if (isUploadPaused) {
+            for (let i = 0; i < totalChunks; i++) {
+                if (isUploadPaused) return;
+
+                if (uploadedChunks.includes(i)) {
+                    const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
+                    progressBar.style.width = percentComplete + "%";
+                    progressText.innerText = percentComplete + "%";
+                    continue;
+                }
+
+                const start = i * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = file.slice(start, end);
+                
+                const chunkFormData = new FormData();
+                chunkFormData.append("file", chunk, file.name);
+
+                currentUploadAbortController = new AbortController();
+
+                try {
+                    const chunkResponse = await fetch(`/api/files/upload/session/${sessionId}/part/${i}`, {
+                        method: "PUT",
+                        body: chunkFormData,
+                        signal: currentUploadAbortController.signal
+                    });
+
+                    if (!chunkResponse.ok) {
+                        throw new Error(`Failed to upload part ${i + 1}`);
+                    }
+
+                    uploadedChunks.push(i);
+
+                    const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
+                    progressBar.style.width = percentComplete + "%";
+                    progressText.innerText = percentComplete + "%";
+                } catch (e) {
+                    if (e.name === 'AbortError') {
+                        console.log("Upload paused at chunk", i);
                         return;
                     }
-
-                    if (uploadedChunks.includes(i)) {
-                        const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
-                        progressBar.style.width = percentComplete + "%";
-                        progressText.innerText = percentComplete + "%";
-                        continue;
-                    }
-
-                    const start = i * CHUNK_SIZE;
-                    const end = Math.min(start + CHUNK_SIZE, file.size);
-                    const chunk = file.slice(start, end);
-                    
-                    const chunkFormData = new FormData();
-                    chunkFormData.append("file", chunk, file.name);
-
-                    currentUploadAbortController = new AbortController();
-
-                    try {
-                        const chunkResponse = await fetch(`/api/files/upload/session/${sessionId}/part/${i}`, {
-                            method: "PUT",
-                            body: chunkFormData,
-                            signal: currentUploadAbortController.signal
-                        });
-
-                        if (!chunkResponse.ok) {
-                            throw new Error(`Failed to upload part ${i + 1} of ${totalChunks}`);
-                        }
-
-                        uploadedChunks.push(i);
-
-                        const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
-                        progressBar.style.width = percentComplete + "%";
-                        progressText.innerText = percentComplete + "%";
-                    } catch (e) {
-                        if (e.name === 'AbortError') {
-                            console.log("Upload paused at chunk", i);
-                            return;
-                        }
-                        throw e;
-                    }
+                    throw e;
                 }
+            }
             
             if (isUploadPaused) return;
 
@@ -493,9 +472,7 @@
                 messageDiv.style.color = "#4CAF50";
                 document.getElementById("fileInput").value = "";
                 localStorage.removeItem(storageKey);
-                setTimeout(() => {
-                    progressContainer.style.display = "none";
-                }, 3000);
+                setTimeout(() => { progressContainer.style.display = "none"; }, 3000);
                 submitBtn.disabled = false;
             } else if (completeResponse.status === 409) {
                 messageDiv.innerText = "An unexpected duplicate collision occurred during upload.";
@@ -517,39 +494,91 @@
         }
       }
 
+      async function navigateTo(folderId) {
+          currentFolderId = folderId;
+          fetchFiles();
+      }
+
       async function fetchFiles() {
         try {
-          const response = await fetch("/api/files/list");
-          const files = await response.json();
+          // Update breadcrumbs
+          let breadcrumbHtml = `<span onclick="navigateTo(null)">Home</span>`;
+          if (currentFolderId) {
+              const pathRes = await fetch(`/api/folders/${currentFolderId}/path`);
+              if (pathRes.ok) {
+                  const pathData = await pathRes.json();
+                  breadcrumbHtml = `<span onclick="navigateTo(null)">Home</span> / ` + pathData.path.split(' / ').slice(1).join(' / ');
+              }
+          }
+          document.getElementById('breadcrumb').innerHTML = breadcrumbHtml;
+
+          let folderUrl = "/api/folders";
+          if (currentFolderId) folderUrl += `?parentId=${currentFolderId}`;
+          const folderRes = await fetch(folderUrl);
+          const folders = await folderRes.json();
+
+          let fileUrl = "/api/files/list";
+          if (currentFolderId) fileUrl += `?folderId=${currentFolderId}`;
+          const fileRes = await fetch(fileUrl);
+          const files = await fileRes.json();
+
           const container = document.getElementById("filesContainer");
           container.innerHTML = "";
 
-          if (files.length === 0) {
-            container.innerHTML = "<li>No files uploaded yet.</li>";
+          if (folders.length === 0 && files.length === 0) {
+            container.innerHTML = "<li>This folder is empty.</li>";
             return;
           }
 
-          files.forEach((file) => {
+          // Render Folders
+          folders.forEach(folder => {
+              const li = document.createElement("li");
+              
+              const infoDiv = document.createElement("div");
+              infoDiv.className = "item-name";
+              infoDiv.innerHTML = `📁 <strong>${folder.name}</strong>`;
+              infoDiv.onclick = () => navigateTo(folder.id);
+
+              const actionsDiv = document.createElement("div");
+              actionsDiv.className = "action-buttons";
+
+              const renameBtn = document.createElement("button");
+              renameBtn.textContent = "Rename";
+              renameBtn.className = "action-btn rename-btn";
+              renameBtn.onclick = () => showRenameFolderModal(folder.id, folder.name);
+
+              const deleteBtn = document.createElement("button");
+              deleteBtn.textContent = "Trash";
+              deleteBtn.className = "action-btn delete-btn";
+              deleteBtn.onclick = async () => {
+                  if(confirm(`Move folder '${folder.name}' to trash?`)) {
+                      await fetch(`/api/folders/${folder.id}`, {method: 'DELETE'});
+                  }
+              };
+
+              actionsDiv.append(renameBtn, deleteBtn);
+              li.append(infoDiv, actionsDiv);
+              container.appendChild(li);
+          });
+
+          // Render Files
+          files.forEach(file => {
             const li = document.createElement("li");
 
-            const fileInfoDiv = document.createElement("div");
-            fileInfoDiv.style.display = "flex";
-            fileInfoDiv.style.flexDirection = "column";
-            fileInfoDiv.style.gap = "4px";
+            const infoDiv = document.createElement("div");
+            infoDiv.style.display = "flex";
+            infoDiv.style.flexDirection = "column";
+            
+            const nameSpan = document.createElement("span");
+            nameSpan.innerHTML = `📄 <strong>${file.originalName}</strong> <span style="font-size: 11px; color:#888;">(${file.storedName})</span>`;
+            
+            const metaSpan = document.createElement("span");
+            metaSpan.textContent = `${(file.size / 1024).toFixed(2)} KB • ${new Date(file.uploadedAt).toLocaleString()}`;
+            metaSpan.style.fontSize = "12px";
+            metaSpan.style.color = "#666";
+            metaSpan.style.marginLeft = "25px";
 
-            const fileNameSpan = document.createElement("span");
-            fileNameSpan.textContent = file.storedName;
-            fileNameSpan.style.fontWeight = "bold";
-
-            const fileMetaSpan = document.createElement("span");
-            const sizeInKB = (file.size / 1024).toFixed(2);
-            const date = new Date(file.uploadedAt).toLocaleString();
-            fileMetaSpan.textContent = `${sizeInKB} KB • ${file.contentType || "Unknown Type"} • ${date}`;
-            fileMetaSpan.style.fontSize = "12px";
-            fileMetaSpan.style.color = "#666";
-
-            fileInfoDiv.appendChild(fileNameSpan);
-            fileInfoDiv.appendChild(fileMetaSpan);
+            infoDiv.append(nameSpan, metaSpan);
 
             const actionsDiv = document.createElement("div");
             actionsDiv.className = "action-buttons";
@@ -557,42 +586,20 @@
             const downloadLink = document.createElement("a");
             downloadLink.href = `/api/files/download/${encodeURIComponent(file.storedName)}`;
             downloadLink.textContent = "Download";
-            downloadLink.className = "download-btn";
+            downloadLink.className = "action-btn";
             downloadLink.setAttribute("download", file.originalName);
 
             const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Move to Trash";
-            deleteBtn.className = "delete-btn";
-            deleteBtn.style.backgroundColor = "#ff9800";
+            deleteBtn.textContent = "Trash";
+            deleteBtn.className = "action-btn delete-btn";
             deleteBtn.onclick = async () => {
-              if (
-                confirm(`Are you sure you want to move ${file.originalName} to trash?`)
-              ) {
-                try {
-                  const response = await fetch(
-                    `/api/files/${encodeURIComponent(file.storedName)}`,
-                    {
-                      method: "DELETE",
-                    },
-                  );
-                  if (response.ok) {
-                    fetchFiles();
-                    fetchTrashedFiles();
-                  } else {
-                    alert("Failed to move file to trash.");
-                  }
-                } catch (error) {
-                  console.error("Error trashing file:", error);
-                  alert("Error trashing file.");
-                }
+              if (confirm(`Move file '${file.originalName}' to trash?`)) {
+                  await fetch(`/api/files/${encodeURIComponent(file.storedName)}`, { method: "DELETE" });
               }
             };
 
-            actionsDiv.appendChild(downloadLink);
-            actionsDiv.appendChild(deleteBtn);
-
-            li.appendChild(fileInfoDiv);
-            li.appendChild(actionsDiv);
+            actionsDiv.append(downloadLink, deleteBtn);
+            li.append(infoDiv, actionsDiv);
             container.appendChild(li);
           });
         } catch (error) {
@@ -602,140 +609,105 @@
 
       async function fetchTrashedFiles() {
         try {
-          const response = await fetch("/api/files/trash");
-          const files = await response.json();
+          const folderRes = await fetch("/api/folders/trash");
+          const folders = await folderRes.json();
+
+          const fileRes = await fetch("/api/files/trash");
+          const files = await fileRes.json();
+
           const container = document.getElementById("trashContainer");
           container.innerHTML = "";
 
-          if (files.length === 0) {
+          if (folders.length === 0 && files.length === 0) {
             container.innerHTML = "<li>Trash is empty.</li>";
             return;
           }
 
-          files.forEach((file) => {
+          // Trashed Folders
+          for (const folder of folders) {
             const li = document.createElement("li");
             li.style.borderLeftColor = "#f44336";
 
-            const fileInfoDiv = document.createElement("div");
-            fileInfoDiv.style.display = "flex";
-            fileInfoDiv.style.flexDirection = "column";
-            fileInfoDiv.style.gap = "4px";
-
-            const fileNameSpan = document.createElement("span");
-            fileNameSpan.textContent = file.storedName;
-            fileNameSpan.style.fontWeight = "bold";
-            fileNameSpan.style.color = "#888";
-            fileNameSpan.style.textDecoration = "line-through";
-
-            const fileMetaSpan = document.createElement("span");
-            const sizeInKB = (file.size / 1024).toFixed(2);
-            const date = new Date(file.deletedAt).toLocaleString();
-            fileMetaSpan.textContent = `${sizeInKB} KB • Deleted: ${date}`;
-            fileMetaSpan.style.fontSize = "12px";
-            fileMetaSpan.style.color = "#888";
-
-            fileInfoDiv.appendChild(fileNameSpan);
-            fileInfoDiv.appendChild(fileMetaSpan);
+            const infoDiv = document.createElement("div");
+            infoDiv.innerHTML = `📁 <span style="text-decoration: line-through; color: #888;">${folder.name}</span>`;
 
             const actionsDiv = document.createElement("div");
             actionsDiv.className = "action-buttons";
 
             const restoreBtn = document.createElement("button");
             restoreBtn.textContent = "Restore";
-            restoreBtn.className = "download-btn";
+            restoreBtn.className = "action-btn";
             restoreBtn.onclick = async () => {
-                try {
-                  const response = await fetch(
-                    `/api/files/${encodeURIComponent(file.storedName)}/restore`,
-                    {
-                      method: "POST",
-                    },
-                  );
-                  if (response.ok) {
-                    fetchFiles();
-                    fetchTrashedFiles();
-                  } else {
-                    alert("Failed to restore file.");
-                  }
-                } catch (error) {
-                  console.error("Error restoring file:", error);
-                  alert("Error restoring file.");
-                }
+                await fetch(`/api/folders/${folder.id}/restore`, { method: "POST" });
             };
 
-            const permanentDeleteBtn = document.createElement("button");
-            permanentDeleteBtn.textContent = "Delete Permanently";
-            permanentDeleteBtn.className = "delete-btn";
-            permanentDeleteBtn.onclick = async () => {
-              if (
-                confirm(`Are you absolutely sure you want to permanently delete ${file.originalName}? This cannot be undone.`)
-              ) {
-                try {
-                  const response = await fetch(
-                    `/api/files/${encodeURIComponent(file.storedName)}/permanent`,
-                    {
-                      method: "DELETE",
-                    },
-                  );
-                  if (response.ok) {
-                    fetchTrashedFiles();
-                  } else {
-                    alert("Failed to permanently delete file.");
-                  }
-                } catch (error) {
-                  console.error("Error deleting file permanently:", error);
-                  alert("Error deleting file permanently.");
-                }
+            const permDeleteBtn = document.createElement("button");
+            permDeleteBtn.textContent = "Delete Permanently";
+            permDeleteBtn.className = "action-btn delete-btn";
+            permDeleteBtn.onclick = async () => {
+              if (confirm(`Permanently delete folder '${folder.name}'?`)) {
+                  await fetch(`/api/folders/${folder.id}/permanent`, { method: "DELETE" });
               }
             };
 
-            actionsDiv.appendChild(restoreBtn);
-            actionsDiv.appendChild(permanentDeleteBtn);
-
-            li.appendChild(fileInfoDiv);
-            li.appendChild(actionsDiv);
+            actionsDiv.append(restoreBtn, permDeleteBtn);
+            li.append(infoDiv, actionsDiv);
             container.appendChild(li);
-          });
+          }
+
+          // Trashed Files
+          for (const file of files) {
+            const li = document.createElement("li");
+            li.style.borderLeftColor = "#f44336";
+
+            const infoDiv = document.createElement("div");
+            infoDiv.innerHTML = `📄 <span style="text-decoration: line-through; color: #888;">${file.originalName}</span> <br><small style="margin-left: 25px; color: #aaa;">Path: ${file.folder ? file.folder.name : 'Root'}</small>`;
+
+            const actionsDiv = document.createElement("div");
+            actionsDiv.className = "action-buttons";
+
+            const restoreBtn = document.createElement("button");
+            restoreBtn.textContent = "Restore";
+            restoreBtn.className = "action-btn";
+            restoreBtn.onclick = async () => {
+                await fetch(`/api/files/${encodeURIComponent(file.storedName)}/restore`, { method: "POST" });
+            };
+
+            const permDeleteBtn = document.createElement("button");
+            permDeleteBtn.textContent = "Delete Permanently";
+            permDeleteBtn.className = "action-btn delete-btn";
+            permDeleteBtn.onclick = async () => {
+              if (confirm(`Permanently delete '${file.originalName}'?`)) {
+                  await fetch(`/api/files/${encodeURIComponent(file.storedName)}/permanent`, { method: "DELETE" });
+              }
+            };
+
+            actionsDiv.append(restoreBtn, permDeleteBtn);
+            li.append(infoDiv, actionsDiv);
+            container.appendChild(li);
+          }
+
         } catch (error) {
           console.error("Failed to fetch trashed files:", error);
         }
       }
 
-      // Fetch files on load
       fetchFiles();
       fetchTrashedFiles();
 
-      // Setup WebSocket for real-time synchronization
       function connectWebSocket() {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = protocol + "//" + window.location.host + "/ws/files";
         const socket = new WebSocket(wsUrl);
-
-        socket.onopen = function () {
-          console.log("WebSocket connection established.");
-        };
-
-        socket.onmessage = function (event) {
-          if (event.data === "FILE_UPDATED") {
-            console.log("File update received from server. Refreshing lists...");
+        socket.onopen = () => console.log("WebSocket connected.");
+        socket.onmessage = (e) => {
+          if (e.data === "FILE_UPDATED") {
             fetchFiles();
             fetchTrashedFiles();
           }
         };
-
-        socket.onclose = function (event) {
-          console.log(
-            "WebSocket connection closed. Reconnecting in 5 seconds...",
-          );
-          setTimeout(connectWebSocket, 5000);
-        };
-
-        socket.onerror = function (error) {
-          console.error("WebSocket Error:", error);
-        };
+        socket.onclose = () => setTimeout(connectWebSocket, 5000);
       }
-
-      // Initialize WebSocket connection
       connectWebSocket();
     </script>
   </body>

@@ -9,7 +9,13 @@ import java.time.LocalDateTime;
 @Table(
     name = "file_metadata",
     indexes = {
-        @Index(name = "idx_user_checksum", columnList = "user_id, checksum")
+        @Index(name = "idx_user_checksum", columnList = "user_id, checksum"),
+        @Index(name = "idx_folder_id", columnList = "folder_id")
+    },
+    uniqueConstraints = {
+        // A file name must be unique within its parent folder for a given user.
+        // We'll enforce this primarily in the service layer since folder_id can be null,
+        // but it's good to note.
     }
 )
 @Data
@@ -40,6 +46,10 @@ public class FileMetadata {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "folder_id")
+    private Folder folder;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

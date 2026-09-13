@@ -19,6 +19,10 @@ public class UploadSession {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "folder_id")
+    private Folder folder;
+
     @Column(name = "original_name", nullable = false)
     private String originalName;
 

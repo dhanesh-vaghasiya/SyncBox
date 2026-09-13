@@ -29,9 +29,10 @@ public class FileController {
     public ResponseEntity<String> uploadFile(
             @RequestParam("file") MultipartFile file, 
             @RequestParam(value = "force", defaultValue = "false") boolean force,
+            @RequestParam(value = "folderId", required = false) Long folderId,
             Principal principal) {
         try {
-            fileService.saveFile(file, principal.getName(), force);
+            fileService.saveFile(file, principal.getName(), force, folderId);
             return ResponseEntity.ok("File uploaded successfully: " + file.getOriginalFilename());
         } catch (DuplicateFileException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
@@ -44,8 +45,11 @@ public class FileController {
     }
 
     @GetMapping("/check")
-    public ResponseEntity<Boolean> checkFileExists(@RequestParam String checksum, Principal principal) {
-        boolean exists = fileService.checkFileExists(checksum, principal.getName());
+    public ResponseEntity<Boolean> checkFileExists(
+            @RequestParam String checksum, 
+            @RequestParam(value = "folderId", required = false) Long folderId,
+            Principal principal) {
+        boolean exists = fileService.checkFileExists(checksum, principal.getName(), folderId);
         return ResponseEntity.ok(exists);
     }
 
@@ -55,10 +59,11 @@ public class FileController {
             @RequestParam("contentType") String contentType,
             @RequestParam("totalSize") long totalSize,
             @RequestParam("totalChunks") int totalChunks,
+            @RequestParam(value = "folderId", required = false) Long folderId,
             Principal principal) {
         try {
             com.project.syncbox.model.UploadSession session = fileService.createUploadSession(
-                    originalName, contentType, totalSize, totalChunks, principal.getName());
+                    originalName, contentType, totalSize, totalChunks, principal.getName(), folderId);
             return ResponseEntity.ok(session);
         } catch (Exception e) {
             e.printStackTrace();
@@ -115,8 +120,10 @@ public class FileController {
     }
 
     @GetMapping("/list")
-    public ResponseEntity<List<FileMetadata>> listFiles(Principal principal) {
-        return ResponseEntity.ok(fileService.getFileList(principal.getName()));
+    public ResponseEntity<List<FileMetadata>> listFiles(
+            @RequestParam(value = "folderId", required = false) Long folderId,
+            Principal principal) {
+        return ResponseEntity.ok(fileService.getFileList(principal.getName(), folderId));
     }
 
     @GetMapping("/trash")
@@ -173,6 +180,23 @@ public class FileController {
         } catch (IOException e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Failed to permanently delete file.");
+        }
+    }
+
+    @PutMapping("/{filename:.+}/move")
+    public ResponseEntity<String> moveFile(
+            @PathVariable String filename,
+            @RequestParam(value = "folderId", required = false) Long folderId,
+            Principal principal) {
+        try {
+            boolean moved = fileService.moveFile(filename, folderId, principal.getName());
+            if (moved) {
+                return ResponseEntity.ok("File moved successfully");
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }
