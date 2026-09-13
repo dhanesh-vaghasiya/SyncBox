@@ -270,7 +270,13 @@ public class FileService {
         return new com.project.syncbox.dto.SessionStatusDTO(session, uploadedChunks);
     }
 
-    public void completeUpload(String sessionId, boolean force, String username) throws IOException {
+    public boolean checkFileExists(String checksum, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return fileMetadataRepository.existsByUserAndChecksumAndDeletedAtIsNull(user, checksum);
+    }
+
+    public void completeUpload(String sessionId, String duplicateAction, String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -303,9 +309,21 @@ public class FileService {
         byte[] mergedBytes = Files.readAllBytes(mergedFilePath);
         String checksum = calculateChecksum(mergedBytes);
 
-        if (!force && fileMetadataRepository.existsByUserAndChecksumAndDeletedAtIsNull(user, checksum)) {
-            // Keep the temp dir and merged file so they can retry with force=true
-            throw new DuplicateFileException("DUPLICATE_CHECKSUM");
+        if (fileMetadataRepository.existsByUserAndChecksumAndDeletedAtIsNull(user, checksum)) {
+            if ("NONE".equals(duplicateAction)) {
+                // Keep the temp dir and merged file so they can retry
+                throw new DuplicateFileException("DUPLICATE_CHECKSUM");
+            } else if ("REPLACE".equals(duplicateAction)) {
+                // Find and soft-delete existing files with this checksum
+                java.util.List<FileMetadata> allFiles = fileMetadataRepository.findAllByUserAndDeletedAtIsNull(user);
+                for (FileMetadata fm : allFiles) {
+                    if (checksum.equals(fm.getChecksum())) {
+                        fm.setDeletedAt(LocalDateTime.now());
+                        fileMetadataRepository.save(fm);
+                    }
+                }
+            }
+            // If "KEEP_BOTH", we just proceed and generate a new file entry
         }
 
         // Generate final stored name

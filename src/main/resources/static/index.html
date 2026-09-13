@@ -136,7 +136,23 @@
         color: #333;
         font-weight: bold;
       }
+      .modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); display: none;
+        align-items: center; justify-content: center; z-index: 1000;
+      }
+      .modal {
+        background: #fff; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      }
+      .modal h3 { margin-top: 0; color: #f44336; }
+      .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+      .modal-btn { padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+      .btn-keep { background: #4caf50; color: #fff; }
+      .btn-replace { background: #ff9800; color: #fff; }
+      .btn-cancel { background: #e0e0e0; color: #333; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   </head>
   <body>
     <div class="container">
@@ -199,14 +215,103 @@
       </div>
     </div>
 
+    <!-- Duplicate Action Modal -->
+    <div id="duplicateModal" class="modal-overlay">
+      <div class="modal">
+        <h3>File Already Exists</h3>
+        <p>A file with identical contents was found in your account.</p>
+        <div class="modal-actions">
+          <button class="modal-btn btn-keep" id="btnKeepBoth">Keep Both (Upload as Duplicate)</button>
+          <button class="modal-btn btn-replace" id="btnReplace">Replace Existing File</button>
+          <button class="modal-btn btn-cancel" id="btnCancel">Cancel Upload</button>
+        </div>
+      </div>
+    </div>
+
     <script>
-      document.getElementById("uploadForm").addEventListener("submit", (e) => {
+      function calculateChecksum(file) {
+          return new Promise((resolve, reject) => {
+              const chunkSize = 20 * 1024 * 1024; // 20MB
+              const chunks = Math.ceil(file.size / chunkSize);
+              let currentChunk = 0;
+              const algo = CryptoJS.algo.SHA256.create();
+              const reader = new FileReader();
+
+              reader.onload = function(e) {
+                  const wordBuffer = CryptoJS.lib.WordArray.create(e.target.result);
+                  algo.update(wordBuffer);
+                  currentChunk++;
+                  
+                  if (currentChunk < chunks) {
+                      loadNext();
+                  } else {
+                      const hash = algo.finalize().toString(CryptoJS.enc.Hex);
+                      resolve(hash);
+                  }
+              };
+
+              reader.onerror = reject;
+
+              function loadNext() {
+                  const start = currentChunk * chunkSize;
+                  const end = Math.min(start + chunkSize, file.size);
+                  reader.readAsArrayBuffer(file.slice(start, end));
+              }
+
+              loadNext();
+          });
+      }
+
+      let pendingDuplicateFile = null;
+
+      document.getElementById("btnKeepBoth").addEventListener("click", () => {
+          document.getElementById("duplicateModal").style.display = "none";
+          if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "KEEP_BOTH");
+      });
+
+      document.getElementById("btnReplace").addEventListener("click", () => {
+          document.getElementById("duplicateModal").style.display = "none";
+          if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "REPLACE");
+      });
+
+      document.getElementById("btnCancel").addEventListener("click", () => {
+          document.getElementById("duplicateModal").style.display = "none";
+          pendingDuplicateFile = null;
+          document.querySelector('#uploadForm button[type="submit"]').disabled = false;
+          document.getElementById("uploadMessage").innerText = "Upload cancelled.";
+          document.getElementById("uploadMessage").style.color = "#f44336";
+          document.getElementById("fileInput").value = "";
+      });
+
+      document.getElementById("uploadForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const fileInput = document.getElementById("fileInput");
         const file = fileInput.files[0];
         if (!file) return;
 
-        uploadFile(file, false);
+        const submitBtn = document.querySelector('#uploadForm button[type="submit"]');
+        const messageDiv = document.getElementById("uploadMessage");
+        
+        submitBtn.disabled = true;
+
+        try {
+            const checksum = await calculateChecksum(file);
+            const res = await fetch(`/api/files/check?checksum=${encodeURIComponent(checksum)}`);
+            if (!res.ok) throw new Error("Failed to verify file.");
+            
+            const exists = await res.json();
+            
+            if (exists) {
+                pendingDuplicateFile = file;
+                document.getElementById("duplicateModal").style.display = "flex";
+            } else {
+                uploadFile(file, "NONE");
+            }
+        } catch (error) {
+            messageDiv.innerText = error.message;
+            messageDiv.style.color = "#f44336";
+            submitBtn.disabled = false;
+        }
       });
 
       let currentUploadAbortController = null;
@@ -233,14 +338,15 @@
               const storageKey = 'upload_session_' + file.name + '_' + file.size;
               const sessionId = localStorage.getItem(storageKey);
               if (sessionId) {
-                  uploadFile(file, false, sessionId);
+                  uploadFile(file, "NONE", sessionId); // Default action on resume, backend should already handle duplicates
               } else {
-                  uploadFile(file, false);
+                  // User must re-verify if starting fresh
+                  document.getElementById("uploadForm").dispatchEvent(new Event('submit'));
               }
           }
       });
 
-      async function uploadFile(file, force, sessionId = null) {
+      async function uploadFile(file, duplicateAction, sessionId = null) {
         const CHUNK_SIZE = 20 * 1024 * 1024; // 20 MB
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         const storageKey = 'upload_session_' + file.name + '_' + file.size;
@@ -316,13 +422,17 @@
         }
 
         try {
-            messageDiv.innerText = force ? "Finalizing duplicate..." : "Uploading chunks...";
+            messageDiv.innerText = "Uploading chunks...";
             progressContainer.style.display = "block";
             pauseResumeContainer.style.display = "flex";
             pauseBtn.style.display = "inline-block";
             resumeBtn.style.display = "none";
             
-            if (!force) {
+            if (duplicateAction !== "NONE" && !sessionId) {
+                // If it was already checked, skip chunks if force/replace? 
+                // Wait, if it's identical, maybe we shouldn't skip? 
+                // The chunk loop is intact.
+            }
                 for (let i = 0; i < totalChunks; i++) {
                     if (isUploadPaused) {
                         return;
@@ -368,14 +478,13 @@
                         throw e;
                     }
                 }
-            }
             
             if (isUploadPaused) return;
 
             messageDiv.innerText = "Finalizing upload...";
             pauseResumeContainer.style.display = "none";
             
-            const completeResponse = await fetch(`/api/files/upload/session/${sessionId}/complete?force=${force}`, {
+            const completeResponse = await fetch(`/api/files/upload/session/${sessionId}/complete?duplicateAction=${duplicateAction}`, {
                 method: "POST"
             });
 
@@ -389,16 +498,12 @@
                 }, 3000);
                 submitBtn.disabled = false;
             } else if (completeResponse.status === 409) {
-                if (confirm("An identical file already exists. Are you sure you want to upload this duplicate?")) {
-                    uploadFile(file, true, sessionId);
-                } else {
-                    messageDiv.innerText = "Upload cancelled.";
-                    messageDiv.style.color = "#f44336";
-                    document.getElementById("fileInput").value = "";
-                    progressContainer.style.display = "none";
-                    localStorage.removeItem(storageKey);
-                    submitBtn.disabled = false;
-                }
+                messageDiv.innerText = "An unexpected duplicate collision occurred during upload.";
+                messageDiv.style.color = "#f44336";
+                document.getElementById("fileInput").value = "";
+                progressContainer.style.display = "none";
+                localStorage.removeItem(storageKey);
+                submitBtn.disabled = false;
             } else {
                 throw new Error(await completeResponse.text());
             }

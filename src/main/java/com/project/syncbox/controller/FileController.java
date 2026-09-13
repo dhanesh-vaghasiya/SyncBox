@@ -43,6 +43,12 @@ public class FileController {
         }
     }
 
+    @GetMapping("/check")
+    public ResponseEntity<Boolean> checkFileExists(@RequestParam String checksum, Principal principal) {
+        boolean exists = fileService.checkFileExists(checksum, principal.getName());
+        return ResponseEntity.ok(exists);
+    }
+
     @PostMapping("/upload/session")
     public ResponseEntity<com.project.syncbox.model.UploadSession> createUploadSession(
             @RequestParam("originalName") String originalName,
@@ -93,10 +99,10 @@ public class FileController {
     @PostMapping("/upload/session/{sessionId}/complete")
     public ResponseEntity<String> completeUpload(
             @PathVariable String sessionId,
-            @RequestParam(value = "force", defaultValue = "false") boolean force,
+            @RequestParam(value = "duplicateAction", defaultValue = "NONE") String duplicateAction,
             Principal principal) {
         try {
-            fileService.completeUpload(sessionId, force, principal.getName());
+            fileService.completeUpload(sessionId, duplicateAction, principal.getName());
             return ResponseEntity.ok("File uploaded successfully");
         } catch (DuplicateFileException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
