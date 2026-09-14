@@ -275,4 +275,36 @@ public class FolderService {
         Collections.reverse(path);
         return String.join(" / ", path);
     }
+
+    public List<java.util.Map<String, Object>> getFolderBreadcrumbs(Long folderId, String username) {
+        List<java.util.Map<String, Object>> breadcrumbs = new ArrayList<>();
+        java.util.Map<String, Object> homeNode = new java.util.HashMap<>();
+        homeNode.put("id", null);
+        homeNode.put("name", "Home");
+        
+        if (folderId == null) {
+            breadcrumbs.add(homeNode);
+            return breadcrumbs;
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Folder current = folderRepository.findByIdAndUser(folderId, user).orElse(null);
+        if (current == null) {
+            breadcrumbs.add(homeNode);
+            return breadcrumbs;
+        }
+
+        while (current != null) {
+            java.util.Map<String, Object> node = new java.util.HashMap<>();
+            node.put("id", current.getId());
+            node.put("name", current.getName());
+            breadcrumbs.add(node);
+            current = current.getParent();
+        }
+        breadcrumbs.add(homeNode);
+        Collections.reverse(breadcrumbs);
+        return breadcrumbs;
+    }
 }

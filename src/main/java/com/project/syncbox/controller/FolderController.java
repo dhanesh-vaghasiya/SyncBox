@@ -113,4 +113,14 @@ public class FolderController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @GetMapping("/breadcrumbs")
+    public ResponseEntity<List<Map<String, Object>>> getFolderBreadcrumbs(@RequestParam(value = "folderId", required = false) Long folderId, Principal principal) {
+        try {
+            List<Map<String, Object>> breadcrumbs = folderService.getFolderBreadcrumbs(folderId, principal.getName());
+            return ResponseEntity.ok(breadcrumbs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }

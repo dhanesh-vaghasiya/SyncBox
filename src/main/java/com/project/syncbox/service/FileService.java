@@ -100,19 +100,34 @@ public class FileService {
     
     private String calculateChecksum(byte[] bytes) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(bytes);
-            StringBuilder hexString = new StringBuilder(2 * hash.length);
+            int L = bytes.length;
+            int CHUNK_SIZE = 1048576; // 1MB
+            byte[] bufferToHash;
+
+            if (L <= 3 * CHUNK_SIZE) {
+                bufferToHash = bytes;
+            } else {
+                bufferToHash = new byte[3 * CHUNK_SIZE];
+                // First 1MB
+                System.arraycopy(bytes, 0, bufferToHash, 0, CHUNK_SIZE);
+                // Middle 1MB
+                int mid = L / 2;
+                System.arraycopy(bytes, mid - (CHUNK_SIZE / 2), bufferToHash, CHUNK_SIZE, CHUNK_SIZE);
+                // Last 1MB
+                System.arraycopy(bytes, L - CHUNK_SIZE, bufferToHash, 2 * CHUNK_SIZE, CHUNK_SIZE);
+            }
+
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(bufferToHash);
+            StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
+                if (hex.length() == 1) hexString.append('0');
                 hexString.append(hex);
             }
             return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Could not calculate checksum", e);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("Failed to calculate checksum", e);
         }
     }
     

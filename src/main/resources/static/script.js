@@ -43,17 +43,23 @@ const iconRestore = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
 
 async function fetchFiles() {
     try {
-        let breadcrumbHtml = `<span onclick="navigateTo(null)">Home</span>`;
-        if (currentFolderId) {
-            const pathRes = await fetch(`/api/folders/${currentFolderId}/path`);
-            if (pathRes.ok) {
-                const pathData = await pathRes.json();
-                const parts = pathData.path.split(' / ').slice(1);
-                if (parts.length > 0) {
-                    breadcrumbHtml += ` <svg style="width:16px;height:16px;opacity:0.5;margin-top:2px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg> ` + parts.join(` <svg style="width:16px;height:16px;opacity:0.5;margin-top:2px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg> `);
-                }
-            }
+        let breadcrumbUrl = "/api/folders/breadcrumbs";
+        if (currentFolderId) breadcrumbUrl += `?folderId=${currentFolderId}`;
+        
+        const pathRes = await fetch(breadcrumbUrl);
+        let breadcrumbHtml = "";
+        
+        if (pathRes.ok) {
+            const breadcrumbs = await pathRes.json();
+            const svgSeparator = ` <svg style="width:16px;height:16px;opacity:0.5;margin-top:2px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg> `;
+            
+            breadcrumbHtml = breadcrumbs.map(b => 
+                `<span onclick="navigateTo(${b.id})" style="cursor:pointer; color:var(--primary-color);">${b.name}</span>`
+            ).join(svgSeparator);
+        } else {
+            breadcrumbHtml = `<span onclick="navigateTo(null)" style="cursor:pointer; color:var(--primary-color);">Home</span>`;
         }
+        
         breadcrumb.innerHTML = breadcrumbHtml;
 
         let folderUrl = "/api/folders";
@@ -280,29 +286,23 @@ async function renameFolder() {
 // Hashing Helper
 function calculateChecksum(file) {
     return new Promise((resolve, reject) => {
-        const chunkSize = 20 * 1024 * 1024;
-        const chunks = Math.ceil(file.size / chunkSize);
-        let currentChunk = 0;
-        const algo = CryptoJS.algo.SHA256.create();
-        const reader = new FileReader();
-
-        reader.onload = function(e) {
-            const wordBuffer = CryptoJS.lib.WordArray.create(e.target.result);
-            algo.update(wordBuffer);
-            currentChunk++;
-            if (currentChunk < chunks) {
-                loadNext();
+        const worker = new Worker('/hashWorker.js');
+        
+        worker.onmessage = function(e) {
+            if (e.data.success) {
+                resolve(e.data.hash);
             } else {
-                resolve(algo.finalize().toString(CryptoJS.enc.Hex));
+                reject(new Error(e.data.error));
             }
+            worker.terminate();
         };
-        reader.onerror = reject;
-        function loadNext() {
-            const start = currentChunk * chunkSize;
-            const end = Math.min(start + chunkSize, file.size);
-            reader.readAsArrayBuffer(file.slice(start, end));
-        }
-        loadNext();
+
+        worker.onerror = function(e) {
+            reject(new Error("Worker failed to hash file."));
+            worker.terminate();
+        };
+
+        worker.postMessage(file);
     });
 }
 
