@@ -317,13 +317,12 @@ body {
 .file-actions {
   display: flex;
   gap: 8px;
-  opacity: 0;
-  transition: opacity 0.2s;
   flex-shrink: 0;
 }
 
-.file-row:hover .file-actions {
-  opacity: 1;
+.btn-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .btn-icon {
