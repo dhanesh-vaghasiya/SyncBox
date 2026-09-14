@@ -26,7 +26,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable()) // Disable CSRF for simple REST/File upload
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login.html", "/signup.html", "/api/auth/signup").permitAll()
+                .requestMatchers("/login.html", "/signup.html", "/style.css", "/api/auth/signup").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

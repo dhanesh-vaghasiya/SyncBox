@@ -1,714 +1,130 @@
 <!doctype html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SyncBox - File Upload</title>
-    <style>
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f4f7f6;
-        color: #333;
-        margin: 0;
-        padding: 40px;
-        display: flex;
-        justify-content: center;
-      }
-      .container {
-        background: #fff;
-        padding: 30px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        width: 100%;
-        max-width: 650px;
-      }
-      h2 { margin-top: 0; color: #4caf50; }
-      form { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
-      input[type="file"], input[type="text"] {
-        padding: 10px; border: 1px solid #ddd; border-radius: 4px;
-      }
-      button {
-        background-color: #4caf50; color: white; border: none; padding: 10px 15px;
-        border-radius: 4px; cursor: pointer; font-size: 16px; transition: background 0.3s;
-      }
-      button:hover:not(:disabled) { background-color: #45a049; }
-      button:disabled { background-color: #a5d6a7; cursor: not-allowed; }
-      
-      .message { margin-bottom: 20px; font-weight: bold; color: #555; }
-      
-      .file-list h3 { margin-top: 0; border-bottom: 2px solid #4caf50; padding-bottom: 10px; }
-      ul { list-style-type: none; padding: 0; }
-      li {
-        background: #f9f9f9; margin-bottom: 8px; padding: 10px; border-radius: 4px;
-        border-left: 4px solid #4caf50; display: flex; justify-content: space-between; align-items: center;
-      }
-      
-      .breadcrumb {
-        padding: 10px; background: #e8f5e9; border-radius: 4px; margin-bottom: 15px; font-weight: bold;
-      }
-      .breadcrumb span { cursor: pointer; color: #2196f3; }
-      .breadcrumb span:hover { text-decoration: underline; }
-
-      .action-btn {
-        background-color: #2196f3; color: white; padding: 5px 10px;
-        text-decoration: none; border-radius: 3px; font-size: 14px;
-        border: none; cursor: pointer; transition: background 0.3s; margin-left: 5px;
-      }
-      .action-btn:hover { background-color: #0b7dda; }
-      .delete-btn { background-color: #f44336; }
-      .delete-btn:hover { background-color: #d32f2f; }
-      .rename-btn { background-color: #ff9800; }
-      .rename-btn:hover { background-color: #e68a00; }
-      .action-buttons { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
-      
-      .progress-container { width: 100%; background-color: #e0e0e0; border-radius: 4px; margin-top: 10px; display: none; position: relative; height: 20px; }
-      .progress-bar { width: 0%; height: 100%; background-color: #4caf50; border-radius: 4px; transition: width 0.2s; }
-      .progress-text { position: absolute; width: 100%; text-align: center; top: 0; left: 0; line-height: 20px; font-size: 12px; color: #333; font-weight: bold; }
-      
-      .modal-overlay {
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.5); display: none;
-        align-items: center; justify-content: center; z-index: 1000;
-      }
-      .modal {
-        background: #fff; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-      }
-      .modal h3 { margin-top: 0; color: #4caf50; }
-      .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-      .modal-btn { padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; color: #fff; }
-      .btn-cancel { background: #e0e0e0; color: #333; }
-      
-      .item-name { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-      .item-name:hover { text-decoration: underline; }
-    </style>
+    <title>SyncBox - Premium File Storage</title>
+    <link rel="stylesheet" href="/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-  </head>
-  <body>
-    <div class="container">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0">SyncBox</h2>
-        <form action="/logout" method="post" style="margin: 0; display: inline-block">
-          <button type="submit" style="background-color: #f44336; padding: 8px 12px; font-size: 14px;">Logout</button>
-        </form>
-      </div>
-      
-      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <button onclick="showCreateFolderModal()" style="background-color: #2196f3; flex: 1;">+ New Folder</button>
-      </div>
+</head>
+<body>
 
-      <form id="uploadForm">
-        <input type="file" id="fileInput" name="file" required />
-        <button type="submit">Upload File Here</button>
-        <div class="progress-container" id="progressContainer">
-          <div class="progress-bar" id="progressBar"></div>
-          <div class="progress-text" id="progressText">0%</div>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="brand">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 28px; height: 28px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            SyncBox
         </div>
-        <div id="pauseResumeContainer" style="display: none; margin-top: 10px; text-align: center; gap: 10px;">
-            <button type="button" id="pauseBtn" style="background-color: #ff9800; display: none; width: 100%;">Pause Upload</button>
-            <button type="button" id="resumeBtn" style="background-color: #2196f3; display: none; width: 100%;">Resume Upload</button>
+        <ul class="nav-links">
+            <li class="nav-item active" id="nav-files" onclick="switchView('files')">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                My Files
+            </li>
+            <li class="nav-item" id="nav-trash" onclick="switchView('trash')">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Trash
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <form action="/logout" method="post" style="margin: 0;">
+                <button type="submit" class="btn-logout">
+                    <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Logout
+                </button>
+            </form>
         </div>
-      </form>
-      <div id="uploadMessage" class="message"></div>
+    </div>
 
-      <div class="file-list">
-        <div id="breadcrumb" class="breadcrumb">Home</div>
-        <ul id="filesContainer"></ul>
-      </div>
-
-      <div class="file-list" style="margin-top: 30px;">
-        <div style="border-bottom: 2px solid #f44336; padding-bottom: 10px; margin-bottom: 10px;">
-            <h3 style="margin: 0; color: #f44336; border: none; padding: 0;">Trash</h3>
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <div class="breadcrumb" id="breadcrumb">
+                <span>Home</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn-primary" onclick="showCreateFolderModal()">
+                    <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    New Folder
+                </button>
+            </div>
         </div>
-        <ul id="trashContainer"></ul>
-      </div>
+
+        <!-- Files View -->
+        <div class="view-container" id="filesView">
+            
+            <form id="uploadForm" class="upload-zone">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                <div class="upload-text">Click or drag files here to upload</div>
+                <div class="upload-subtext">Maximum file size depends on your backend limit</div>
+                <input type="file" id="fileInput" name="file" />
+                
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="upload-status" id="uploadStatus"></div>
+                
+                <div class="pause-resume-container" id="pauseResumeContainer">
+                    <button type="button" class="btn-secondary" id="pauseBtn">Pause</button>
+                    <button type="button" class="btn-primary" id="resumeBtn" style="display:none;">Resume</button>
+                </div>
+            </form>
+
+            <div class="file-list" id="filesContainer">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+
+        <!-- Trash View -->
+        <div class="view-container" id="trashView" style="display: none;">
+            <div style="margin-bottom: 24px;">
+                <h2 style="margin: 0; color: var(--text-main); font-weight: 600;">Trash</h2>
+                <p style="margin: 4px 0 0 0; color: var(--text-muted); font-size: 14px;">Items in trash will be permanently deleted after 30 days automatically.</p>
+            </div>
+            
+            <div class="file-list" id="trashContainer">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
     </div>
 
     <!-- Modals -->
     <div id="duplicateModal" class="modal-overlay">
-      <div class="modal">
-        <h3 style="color: #f44336;">File Already Exists</h3>
-        <p>A file with identical contents was found in this folder.</p>
-        <div class="modal-actions">
-          <button class="modal-btn" style="background: #4caf50;" id="btnKeepBoth">Keep Both (Upload as Duplicate)</button>
-          <button class="modal-btn" style="background: #ff9800;" id="btnReplace">Replace Existing File</button>
-          <button class="modal-btn btn-cancel" id="btnCancelDup">Cancel Upload</button>
+        <div class="modal">
+            <h3 style="color: var(--danger-color);">File Already Exists</h3>
+            <p>A file with identical contents was found in this folder. What would you like to do?</p>
+            <div class="modal-actions" style="flex-direction: column;">
+                <button class="btn-primary" id="btnReplace" style="width: 100%; justify-content: center;">Replace Existing File</button>
+                <button class="btn-secondary" id="btnKeepBoth" style="width: 100%;">Keep Both (Upload as Duplicate)</button>
+                <button class="btn-secondary" id="btnCancelDup" style="width: 100%; border-color: transparent;">Cancel Upload</button>
+            </div>
         </div>
-      </div>
     </div>
 
     <div id="createFolderModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Create New Folder</h3>
-        <input type="text" id="folderNameInput" placeholder="Folder Name" style="width: 100%; box-sizing: border-box; margin-top: 10px;" />
-        <div class="modal-actions">
-          <button class="modal-btn" style="background: #2196f3;" onclick="createFolder()">Create</button>
-          <button class="modal-btn btn-cancel" onclick="closeModal('createFolderModal')">Cancel</button>
+        <div class="modal">
+            <h3>Create New Folder</h3>
+            <input type="text" id="folderNameInput" class="modal-input" placeholder="Enter folder name" autocomplete="off" />
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('createFolderModal')">Cancel</button>
+                <button class="btn-primary" onclick="createFolder()">Create Folder</button>
+            </div>
         </div>
-      </div>
     </div>
     
     <div id="renameFolderModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Rename Folder</h3>
-        <input type="hidden" id="renameFolderId" />
-        <input type="text" id="renameFolderInput" placeholder="New Folder Name" style="width: 100%; box-sizing: border-box; margin-top: 10px;" />
-        <div class="modal-actions">
-          <button class="modal-btn" style="background: #ff9800;" onclick="renameFolder()">Rename</button>
-          <button class="modal-btn btn-cancel" onclick="closeModal('renameFolderModal')">Cancel</button>
+        <div class="modal">
+            <h3>Rename Folder</h3>
+            <input type="hidden" id="renameFolderId" />
+            <input type="text" id="renameFolderInput" class="modal-input" placeholder="New folder name" autocomplete="off" />
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('renameFolderModal')">Cancel</button>
+                <button class="btn-primary" onclick="renameFolder()">Rename</button>
+            </div>
         </div>
-      </div>
     </div>
 
-    <script>
-      let currentFolderId = null;
-      let pendingDuplicateFile = null;
-
-      // Hashing Helper
-      function calculateChecksum(file) {
-          return new Promise((resolve, reject) => {
-              const chunkSize = 20 * 1024 * 1024; // 20MB
-              const chunks = Math.ceil(file.size / chunkSize);
-              let currentChunk = 0;
-              const algo = CryptoJS.algo.SHA256.create();
-              const reader = new FileReader();
-
-              reader.onload = function(e) {
-                  const wordBuffer = CryptoJS.lib.WordArray.create(e.target.result);
-                  algo.update(wordBuffer);
-                  currentChunk++;
-                  if (currentChunk < chunks) {
-                      loadNext();
-                  } else {
-                      resolve(algo.finalize().toString(CryptoJS.enc.Hex));
-                  }
-              };
-              reader.onerror = reject;
-              function loadNext() {
-                  const start = currentChunk * chunkSize;
-                  const end = Math.min(start + chunkSize, file.size);
-                  reader.readAsArrayBuffer(file.slice(start, end));
-              }
-              loadNext();
-          });
-      }
-
-      // Modals Logic
-      function showModal(id) { document.getElementById(id).style.display = "flex"; }
-      function closeModal(id) { document.getElementById(id).style.display = "none"; }
-
-      function showCreateFolderModal() {
-          document.getElementById('folderNameInput').value = '';
-          showModal('createFolderModal');
-      }
-
-      function showRenameFolderModal(id, oldName) {
-          document.getElementById('renameFolderId').value = id;
-          document.getElementById('renameFolderInput').value = oldName;
-          showModal('renameFolderModal');
-      }
-
-      async function createFolder() {
-          const name = document.getElementById('folderNameInput').value.trim();
-          if (!name) return;
-          
-          let url = `/api/folders?name=${encodeURIComponent(name)}`;
-          if (currentFolderId) url += `&parentId=${currentFolderId}`;
-          
-          try {
-              const res = await fetch(url, { method: 'POST' });
-              if (res.ok) {
-                  closeModal('createFolderModal');
-                  fetchFiles();
-              } else {
-                  alert("Failed to create folder.");
-              }
-          } catch(e) { alert("Error creating folder"); }
-      }
-
-      async function renameFolder() {
-          const id = document.getElementById('renameFolderId').value;
-          const name = document.getElementById('renameFolderInput').value.trim();
-          if (!name) return;
-          
-          try {
-              const res = await fetch(`/api/folders/${id}/rename?name=${encodeURIComponent(name)}`, { method: 'PUT' });
-              if (res.ok) {
-                  closeModal('renameFolderModal');
-                  fetchFiles();
-              } else {
-                  alert("Failed to rename folder.");
-              }
-          } catch(e) { alert("Error renaming folder"); }
-      }
-
-      // Duplicate Handling
-      document.getElementById("btnKeepBoth").addEventListener("click", () => {
-          closeModal("duplicateModal");
-          if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "KEEP_BOTH");
-      });
-      document.getElementById("btnReplace").addEventListener("click", () => {
-          closeModal("duplicateModal");
-          if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "REPLACE");
-      });
-      document.getElementById("btnCancelDup").addEventListener("click", () => {
-          closeModal("duplicateModal");
-          pendingDuplicateFile = null;
-          document.querySelector('#uploadForm button[type="submit"]').disabled = false;
-          document.getElementById("uploadMessage").innerText = "Upload cancelled.";
-          document.getElementById("uploadMessage").style.color = "#f44336";
-          document.getElementById("fileInput").value = "";
-      });
-
-      // File Upload logic
-      document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const fileInput = document.getElementById("fileInput");
-        const file = fileInput.files[0];
-        if (!file) return;
-
-        const submitBtn = document.querySelector('#uploadForm button[type="submit"]');
-        const messageDiv = document.getElementById("uploadMessage");
-        
-        submitBtn.disabled = true;
-
-        try {
-            messageDiv.innerText = "Verifying uniqueness...";
-            const checksum = await calculateChecksum(file);
-            let url = `/api/files/check?checksum=${encodeURIComponent(checksum)}`;
-            if (currentFolderId) url += `&folderId=${currentFolderId}`;
-
-            const res = await fetch(url);
-            if (!res.ok) throw new Error("Failed to verify file.");
-            
-            const exists = await res.json();
-            
-            if (exists) {
-                pendingDuplicateFile = file;
-                showModal("duplicateModal");
-            } else {
-                uploadFile(file, "NONE");
-            }
-        } catch (error) {
-            messageDiv.innerText = error.message;
-            messageDiv.style.color = "#f44336";
-            submitBtn.disabled = false;
-        }
-      });
-
-      let currentUploadAbortController = null;
-      let isUploadPaused = false;
-      
-      document.getElementById("pauseBtn").addEventListener("click", () => {
-          isUploadPaused = true;
-          if (currentUploadAbortController) {
-              currentUploadAbortController.abort();
-          }
-          document.getElementById("pauseBtn").style.display = "none";
-          document.getElementById("resumeBtn").style.display = "inline-block";
-          document.getElementById("uploadMessage").innerText = "Upload paused.";
-      });
-
-      document.getElementById("resumeBtn").addEventListener("click", () => {
-          isUploadPaused = false;
-          document.getElementById("resumeBtn").style.display = "none";
-          document.getElementById("pauseBtn").style.display = "inline-block";
-          
-          const fileInput = document.getElementById("fileInput");
-          const file = fileInput.files[0];
-          if (file) {
-              const storageKey = 'upload_session_' + file.name + '_' + file.size;
-              const sessionId = localStorage.getItem(storageKey);
-              if (sessionId) {
-                  uploadFile(file, "NONE", sessionId); 
-              } else {
-                  document.getElementById("uploadForm").dispatchEvent(new Event('submit'));
-              }
-          }
-      });
-
-      async function uploadFile(file, duplicateAction, sessionId = null) {
-        const CHUNK_SIZE = 20 * 1024 * 1024;
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        const storageKey = 'upload_session_' + file.name + '_' + file.size;
-        
-        const messageDiv = document.getElementById("uploadMessage");
-        const progressContainer = document.getElementById("progressContainer");
-        const progressBar = document.getElementById("progressBar");
-        const progressText = document.getElementById("progressText");
-        const submitBtn = document.querySelector('#uploadForm button[type="submit"]');
-        const pauseResumeContainer = document.getElementById("pauseResumeContainer");
-        const pauseBtn = document.getElementById("pauseBtn");
-        const resumeBtn = document.getElementById("resumeBtn");
-        
-        submitBtn.disabled = true;
-        isUploadPaused = false;
-
-        let uploadedChunks = [];
-
-        if (!sessionId) {
-            sessionId = localStorage.getItem(storageKey);
-        }
-
-        if (sessionId) {
-            try {
-                const statusRes = await fetch(`/api/files/upload/session/${sessionId}`);
-                if (statusRes.ok) {
-                    const status = await statusRes.json();
-                    uploadedChunks = status.uploadedChunks || [];
-                } else {
-                    sessionId = null;
-                    localStorage.removeItem(storageKey);
-                }
-            } catch (e) {
-                sessionId = null;
-                localStorage.removeItem(storageKey);
-            }
-        }
-
-        if (!sessionId) {
-            messageDiv.innerText = "Initializing upload...";
-            progressContainer.style.display = "block";
-            progressBar.style.width = "0%";
-            progressText.innerText = "0%";
-            pauseResumeContainer.style.display = "none";
-            messageDiv.style.color = "#333";
-            
-            try {
-                const initFormData = new FormData();
-                initFormData.append("originalName", file.name);
-                initFormData.append("contentType", file.type || "application/octet-stream");
-                initFormData.append("totalSize", file.size);
-                initFormData.append("totalChunks", totalChunks);
-
-                let sessionUrl = "/api/files/upload/session";
-                if (currentFolderId) {
-                    sessionUrl += `?folderId=${currentFolderId}`;
-                }
-
-                const initResponse = await fetch(sessionUrl, {
-                    method: "POST",
-                    body: initFormData
-                });
-
-                if (!initResponse.ok) {
-                    throw new Error("Failed to initialize upload session.");
-                }
-
-                const session = await initResponse.json();
-                sessionId = session.id;
-                localStorage.setItem(storageKey, sessionId);
-            } catch (e) {
-                messageDiv.innerText = e.message;
-                messageDiv.style.color = "#f44336";
-                progressContainer.style.display = "none";
-                submitBtn.disabled = false;
-                return;
-            }
-        }
-
-        try {
-            messageDiv.innerText = "Uploading chunks...";
-            progressContainer.style.display = "block";
-            pauseResumeContainer.style.display = "flex";
-            pauseBtn.style.display = "inline-block";
-            resumeBtn.style.display = "none";
-            
-            for (let i = 0; i < totalChunks; i++) {
-                if (isUploadPaused) return;
-
-                if (uploadedChunks.includes(i)) {
-                    const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
-                    progressBar.style.width = percentComplete + "%";
-                    progressText.innerText = percentComplete + "%";
-                    continue;
-                }
-
-                const start = i * CHUNK_SIZE;
-                const end = Math.min(start + CHUNK_SIZE, file.size);
-                const chunk = file.slice(start, end);
-                
-                const chunkFormData = new FormData();
-                chunkFormData.append("file", chunk, file.name);
-
-                currentUploadAbortController = new AbortController();
-
-                try {
-                    const chunkResponse = await fetch(`/api/files/upload/session/${sessionId}/part/${i}`, {
-                        method: "PUT",
-                        body: chunkFormData,
-                        signal: currentUploadAbortController.signal
-                    });
-
-                    if (!chunkResponse.ok) {
-                        throw new Error(`Failed to upload part ${i + 1}`);
-                    }
-
-                    uploadedChunks.push(i);
-
-                    const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
-                    progressBar.style.width = percentComplete + "%";
-                    progressText.innerText = percentComplete + "%";
-                } catch (e) {
-                    if (e.name === 'AbortError') {
-                        console.log("Upload paused at chunk", i);
-                        return;
-                    }
-                    throw e;
-                }
-            }
-            
-            if (isUploadPaused) return;
-
-            messageDiv.innerText = "Finalizing upload...";
-            pauseResumeContainer.style.display = "none";
-            
-            const completeResponse = await fetch(`/api/files/upload/session/${sessionId}/complete?duplicateAction=${duplicateAction}`, {
-                method: "POST"
-            });
-
-            if (completeResponse.ok) {
-                messageDiv.innerText = "File uploaded successfully!";
-                messageDiv.style.color = "#4CAF50";
-                document.getElementById("fileInput").value = "";
-                localStorage.removeItem(storageKey);
-                setTimeout(() => { progressContainer.style.display = "none"; }, 3000);
-                submitBtn.disabled = false;
-            } else if (completeResponse.status === 409) {
-                messageDiv.innerText = "An unexpected duplicate collision occurred during upload.";
-                messageDiv.style.color = "#f44336";
-                document.getElementById("fileInput").value = "";
-                progressContainer.style.display = "none";
-                localStorage.removeItem(storageKey);
-                submitBtn.disabled = false;
-            } else {
-                throw new Error(await completeResponse.text());
-            }
-
-        } catch (e) {
-            messageDiv.innerText = "Upload failed: " + e.message;
-            messageDiv.style.color = "#f44336";
-            progressContainer.style.display = "none";
-            pauseResumeContainer.style.display = "none";
-            submitBtn.disabled = false;
-        }
-      }
-
-      async function navigateTo(folderId) {
-          currentFolderId = folderId;
-          fetchFiles();
-      }
-
-      async function fetchFiles() {
-        try {
-          // Update breadcrumbs
-          let breadcrumbHtml = `<span onclick="navigateTo(null)">Home</span>`;
-          if (currentFolderId) {
-              const pathRes = await fetch(`/api/folders/${currentFolderId}/path`);
-              if (pathRes.ok) {
-                  const pathData = await pathRes.json();
-                  breadcrumbHtml = `<span onclick="navigateTo(null)">Home</span> / ` + pathData.path.split(' / ').slice(1).join(' / ');
-              }
-          }
-          document.getElementById('breadcrumb').innerHTML = breadcrumbHtml;
-
-          let folderUrl = "/api/folders";
-          if (currentFolderId) folderUrl += `?parentId=${currentFolderId}`;
-          const folderRes = await fetch(folderUrl);
-          const folders = await folderRes.json();
-
-          let fileUrl = "/api/files/list";
-          if (currentFolderId) fileUrl += `?folderId=${currentFolderId}`;
-          const fileRes = await fetch(fileUrl);
-          const files = await fileRes.json();
-
-          const container = document.getElementById("filesContainer");
-          container.innerHTML = "";
-
-          if (folders.length === 0 && files.length === 0) {
-            container.innerHTML = "<li>This folder is empty.</li>";
-            return;
-          }
-
-          // Render Folders
-          folders.forEach(folder => {
-              const li = document.createElement("li");
-              
-              const infoDiv = document.createElement("div");
-              infoDiv.className = "item-name";
-              infoDiv.innerHTML = `📁 <strong>${folder.name}</strong>`;
-              infoDiv.onclick = () => navigateTo(folder.id);
-
-              const actionsDiv = document.createElement("div");
-              actionsDiv.className = "action-buttons";
-
-              const renameBtn = document.createElement("button");
-              renameBtn.textContent = "Rename";
-              renameBtn.className = "action-btn rename-btn";
-              renameBtn.onclick = () => showRenameFolderModal(folder.id, folder.name);
-
-              const deleteBtn = document.createElement("button");
-              deleteBtn.textContent = "Trash";
-              deleteBtn.className = "action-btn delete-btn";
-              deleteBtn.onclick = async () => {
-                  if(confirm(`Move folder '${folder.name}' to trash?`)) {
-                      await fetch(`/api/folders/${folder.id}`, {method: 'DELETE'});
-                  }
-              };
-
-              actionsDiv.append(renameBtn, deleteBtn);
-              li.append(infoDiv, actionsDiv);
-              container.appendChild(li);
-          });
-
-          // Render Files
-          files.forEach(file => {
-            const li = document.createElement("li");
-
-            const infoDiv = document.createElement("div");
-            infoDiv.style.display = "flex";
-            infoDiv.style.flexDirection = "column";
-            
-            const nameSpan = document.createElement("span");
-            nameSpan.innerHTML = `📄 <strong>${file.originalName}</strong> <span style="font-size: 11px; color:#888;">(${file.storedName})</span>`;
-            
-            const metaSpan = document.createElement("span");
-            metaSpan.textContent = `${(file.size / 1024).toFixed(2)} KB • ${new Date(file.uploadedAt).toLocaleString()}`;
-            metaSpan.style.fontSize = "12px";
-            metaSpan.style.color = "#666";
-            metaSpan.style.marginLeft = "25px";
-
-            infoDiv.append(nameSpan, metaSpan);
-
-            const actionsDiv = document.createElement("div");
-            actionsDiv.className = "action-buttons";
-
-            const downloadLink = document.createElement("a");
-            downloadLink.href = `/api/files/download/${encodeURIComponent(file.storedName)}`;
-            downloadLink.textContent = "Download";
-            downloadLink.className = "action-btn";
-            downloadLink.setAttribute("download", file.originalName);
-
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Trash";
-            deleteBtn.className = "action-btn delete-btn";
-            deleteBtn.onclick = async () => {
-              if (confirm(`Move file '${file.originalName}' to trash?`)) {
-                  await fetch(`/api/files/${encodeURIComponent(file.storedName)}`, { method: "DELETE" });
-              }
-            };
-
-            actionsDiv.append(downloadLink, deleteBtn);
-            li.append(infoDiv, actionsDiv);
-            container.appendChild(li);
-          });
-        } catch (error) {
-          console.error("Failed to fetch files:", error);
-        }
-      }
-
-      async function fetchTrashedFiles() {
-        try {
-          const folderRes = await fetch("/api/folders/trash");
-          const folders = await folderRes.json();
-
-          const fileRes = await fetch("/api/files/trash");
-          const files = await fileRes.json();
-
-          const container = document.getElementById("trashContainer");
-          container.innerHTML = "";
-
-          if (folders.length === 0 && files.length === 0) {
-            container.innerHTML = "<li>Trash is empty.</li>";
-            return;
-          }
-
-          // Trashed Folders
-          for (const folder of folders) {
-            const li = document.createElement("li");
-            li.style.borderLeftColor = "#f44336";
-
-            const infoDiv = document.createElement("div");
-            infoDiv.innerHTML = `📁 <span style="text-decoration: line-through; color: #888;">${folder.name}</span>`;
-
-            const actionsDiv = document.createElement("div");
-            actionsDiv.className = "action-buttons";
-
-            const restoreBtn = document.createElement("button");
-            restoreBtn.textContent = "Restore";
-            restoreBtn.className = "action-btn";
-            restoreBtn.onclick = async () => {
-                await fetch(`/api/folders/${folder.id}/restore`, { method: "POST" });
-            };
-
-            const permDeleteBtn = document.createElement("button");
-            permDeleteBtn.textContent = "Delete Permanently";
-            permDeleteBtn.className = "action-btn delete-btn";
-            permDeleteBtn.onclick = async () => {
-              if (confirm(`Permanently delete folder '${folder.name}'?`)) {
-                  await fetch(`/api/folders/${folder.id}/permanent`, { method: "DELETE" });
-              }
-            };
-
-            actionsDiv.append(restoreBtn, permDeleteBtn);
-            li.append(infoDiv, actionsDiv);
-            container.appendChild(li);
-          }
-
-          // Trashed Files
-          for (const file of files) {
-            const li = document.createElement("li");
-            li.style.borderLeftColor = "#f44336";
-
-            const infoDiv = document.createElement("div");
-            infoDiv.innerHTML = `📄 <span style="text-decoration: line-through; color: #888;">${file.originalName}</span> <br><small style="margin-left: 25px; color: #aaa;">Path: ${file.folder ? file.folder.name : 'Root'}</small>`;
-
-            const actionsDiv = document.createElement("div");
-            actionsDiv.className = "action-buttons";
-
-            const restoreBtn = document.createElement("button");
-            restoreBtn.textContent = "Restore";
-            restoreBtn.className = "action-btn";
-            restoreBtn.onclick = async () => {
-                await fetch(`/api/files/${encodeURIComponent(file.storedName)}/restore`, { method: "POST" });
-            };
-
-            const permDeleteBtn = document.createElement("button");
-            permDeleteBtn.textContent = "Delete Permanently";
-            permDeleteBtn.className = "action-btn delete-btn";
-            permDeleteBtn.onclick = async () => {
-              if (confirm(`Permanently delete '${file.originalName}'?`)) {
-                  await fetch(`/api/files/${encodeURIComponent(file.storedName)}/permanent`, { method: "DELETE" });
-              }
-            };
-
-            actionsDiv.append(restoreBtn, permDeleteBtn);
-            li.append(infoDiv, actionsDiv);
-            container.appendChild(li);
-          }
-
-        } catch (error) {
-          console.error("Failed to fetch trashed files:", error);
-        }
-      }
-
-      fetchFiles();
-      fetchTrashedFiles();
-
-      function connectWebSocket() {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = protocol + "//" + window.location.host + "/ws/files";
-        const socket = new WebSocket(wsUrl);
-        socket.onopen = () => console.log("WebSocket connected.");
-        socket.onmessage = (e) => {
-          if (e.data === "FILE_UPDATED") {
-            fetchFiles();
-            fetchTrashedFiles();
-          }
-        };
-        socket.onclose = () => setTimeout(connectWebSocket, 5000);
-      }
-      connectWebSocket();
-    </script>
-  </body>
+    <!-- Connect logic -->
+    <script src="/script.js"></script>
+</body>
 </html>

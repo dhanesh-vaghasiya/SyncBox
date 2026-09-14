@@ -2,40 +2,53 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SyncBox - Login</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding-top: 100px; color: #333; }
-        .container { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px; }
-        h2 { text-align: center; color: #4CAF50; margin-top: 0; }
-        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; background: #4CAF50; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background 0.3s; }
-        button:hover { background: #45a049; }
-        .error { color: #f44336; margin-bottom: 15px; font-size: 14px; text-align: center; }
-        .link { text-align: center; margin-top: 15px; font-size: 14px; }
-        .link a { color: #2196F3; text-decoration: none; }
-        .link a:hover { text-decoration: underline; }
-    </style>
+    <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-    <div class="container">
-        <h2>Login</h2>
-        <div id="errorMsg" class="error"></div>
-        <form action="/login" method="post">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
-        <div class="link">
-            Don't have an account? <a href="/signup.html">Sign Up</a>
+<body style="margin: 0;">
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 28px; height: 28px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    SyncBox
+                </h2>
+                <p>Welcome back! Please login to your account.</p>
+            </div>
+            
+            <div id="alertMsg" class="auth-alert"></div>
+            
+            <form action="/login" method="post" class="auth-form" id="loginForm">
+                <div class="auth-input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" class="auth-input" placeholder="Enter your username" required>
+                </div>
+                
+                <div class="auth-input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="auth-input" placeholder="Enter your password" required>
+                </div>
+                
+                <button type="submit" class="auth-btn">Sign In</button>
+            </form>
+            
+            <div class="auth-footer">
+                Don't have an account? <a href="/signup.html">Sign up</a>
+            </div>
         </div>
     </div>
+    
     <script>
+        const alertMsg = document.getElementById('alertMsg');
+        
         if (window.location.search.includes('error')) {
-            document.getElementById('errorMsg').innerText = 'Invalid username or password.';
+            alertMsg.className = 'auth-alert error';
+            alertMsg.innerText = 'Invalid username or password.';
         }
         if (window.location.search.includes('logout')) {
-            document.getElementById('errorMsg').innerText = 'You have been logged out.';
-            document.getElementById('errorMsg').style.color = '#4CAF50';
+            alertMsg.className = 'auth-alert success';
+            alertMsg.innerText = 'You have been logged out.';
         }
     </script>
 </body>
