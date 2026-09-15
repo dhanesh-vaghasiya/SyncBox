@@ -45,7 +45,8 @@
             <div class="breadcrumb" id="breadcrumb">
                 <span>Home</span>
             </div>
-            <div class="header-actions">
+            <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
+                <input type="text" id="searchInput" placeholder="Search..." class="modal-input" style="padding: 8px 12px; margin: 0; min-width: 200px;" oninput="handleSearch()">
                 <input type="file" id="fileInput" name="file" style="display: none;" />
                 
                 <div id="pauseResumeContainer" style="display: none; align-items: center; gap: 4px;">

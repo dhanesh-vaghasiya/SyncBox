@@ -1,6 +1,8 @@
 let currentFolderId = null;
 let pendingDuplicateFile = null;
 let currentView = 'files'; // 'files' or 'trash'
+let currentFetchedFolders = [];
+let currentFetchedFiles = [];
 
 // Elements
 const filesContainer = document.getElementById('filesContainer');
@@ -65,72 +67,94 @@ async function fetchFiles() {
         let folderUrl = "/api/folders";
         if (currentFolderId) folderUrl += `?parentId=${currentFolderId}`;
         const folderRes = await fetch(folderUrl);
-        const folders = await folderRes.json();
+        currentFetchedFolders = await folderRes.json();
 
         let fileUrl = "/api/files/list";
         if (currentFolderId) fileUrl += `?folderId=${currentFolderId}`;
         const fileRes = await fetch(fileUrl);
-        const files = await fileRes.json();
+        currentFetchedFiles = await fileRes.json();
+        
+        // Reset search bar when navigating
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) searchInput.value = '';
 
-        filesContainer.innerHTML = "";
-
-        if (folders.length === 0 && files.length === 0) {
-            filesContainer.innerHTML = `
-                <div class="empty-state">
-                    ${iconFolder}
-                    <p>This folder is empty</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Render Folders
-        folders.forEach(folder => {
-            const row = document.createElement("div");
-            row.className = "file-row";
-            
-            row.innerHTML = `
-                <div class="file-info" onclick="navigateTo(${folder.id})">
-                    <div class="file-icon folder-icon">${iconFolder}</div>
-                    <div class="file-details">
-                        <span class="file-name">${folder.name}</span>
-                        <span class="file-meta">Folder</span>
-                    </div>
-                </div>
-                <div class="file-actions">
-                    <button class="btn-icon" onclick="openMoveCopyModal('folder', '${folder.id}')" title="Move or Copy"><svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></button>
-                    <button class="btn-icon" onclick="showRenameFolderModal(${folder.id}, '${folder.name}')" title="Rename">${iconEdit}</button>
-                    <button class="btn-icon danger" onclick="deleteFolder(${folder.id}, '${folder.name}')" title="Trash">${iconTrash}</button>
-                </div>
-            `;
-            filesContainer.appendChild(row);
-        });
-
-        // Render Files
-        files.forEach(file => {
-            const row = document.createElement("div");
-            row.className = "file-row";
-            
-            row.innerHTML = `
-                <div class="file-info">
-                    <div class="file-icon">${iconFile}</div>
-                    <div class="file-details">
-                        <span class="file-name" title="${file.originalName}">${file.originalName}</span>
-                        <span class="file-meta">${(file.size / 1024).toFixed(2)} KB • ${new Date(file.uploadedAt).toLocaleDateString()}</span>
-                    </div>
-                </div>
-                <div class="file-actions">
-                    <button class="btn-icon" onclick="openMoveCopyModal('file', '${encodeURIComponent(file.storedName)}')" title="Move or Copy"><svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></button>
-                    <a href="/api/files/download/${encodeURIComponent(file.storedName)}" download="${file.originalName}" class="btn-icon" title="Download">${iconDownload}</a>
-                    <button class="btn-icon danger" onclick="deleteFile('${encodeURIComponent(file.storedName)}', '${file.originalName}')" title="Trash">${iconTrash}</button>
-                </div>
-            `;
-            filesContainer.appendChild(row);
-        });
+        renderFilesAndFolders(currentFetchedFolders, currentFetchedFiles);
     } catch (error) {
         console.error("Failed to fetch files:", error);
     }
 }
+
+function handleSearch() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    if (!query) {
+        renderFilesAndFolders(currentFetchedFolders, currentFetchedFiles);
+        return;
+    }
+    
+    const filteredFolders = currentFetchedFolders.filter(f => f.name.toLowerCase().includes(query));
+    const filteredFiles = currentFetchedFiles.filter(f => f.originalName.toLowerCase().includes(query));
+    
+    renderFilesAndFolders(filteredFolders, filteredFiles);
+}
+
+function renderFilesAndFolders(folders, files) {
+    filesContainer.innerHTML = "";
+
+    if (folders.length === 0 && files.length === 0) {
+        filesContainer.innerHTML = `
+            <div class="empty-state">
+                ${iconFolder}
+                <p>No files or folders found</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Render Folders
+    folders.forEach(folder => {
+        const row = document.createElement("div");
+        row.className = "file-row";
+        
+        row.innerHTML = `
+            <div class="file-info" onclick="navigateTo(${folder.id})">
+                <div class="file-icon folder-icon">${iconFolder}</div>
+                <div class="file-details">
+                    <span class="file-name">${folder.name}</span>
+                    <span class="file-meta">Folder</span>
+                </div>
+            </div>
+            <div class="file-actions">
+                <button class="btn-icon" onclick="openMoveCopyModal('folder', '${folder.id}')" title="Move or Copy"><svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></button>
+                <button class="btn-icon" onclick="showRenameFolderModal(${folder.id}, '${folder.name}')" title="Rename">${iconEdit}</button>
+                <button class="btn-icon danger" onclick="deleteFolder(${folder.id}, '${folder.name}')" title="Trash">${iconTrash}</button>
+            </div>
+        `;
+        filesContainer.appendChild(row);
+    });
+
+    // Render Files
+    files.forEach(file => {
+        const row = document.createElement("div");
+        row.className = "file-row";
+        
+        row.innerHTML = `
+            <div class="file-info">
+                <div class="file-icon">${iconFile}</div>
+                <div class="file-details">
+                    <span class="file-name" title="${file.originalName}">${file.originalName}</span>
+                    <span class="file-meta">${(file.size / 1024).toFixed(2)} KB • ${new Date(file.uploadedAt).toLocaleDateString()}</span>
+                </div>
+            </div>
+            <div class="file-actions">
+                <button class="btn-icon" onclick="openMoveCopyModal('file', '${encodeURIComponent(file.storedName)}')" title="Move or Copy"><svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></button>
+                <a href="/api/files/download/${encodeURIComponent(file.storedName)}" download="${file.originalName}" class="btn-icon" title="Download">${iconDownload}</a>
+                <button class="btn-icon danger" onclick="deleteFile('${encodeURIComponent(file.storedName)}', '${file.originalName}')" title="Trash">${iconTrash}</button>
+            </div>
+        `;
+        filesContainer.appendChild(row);
+    });
+}
+
 
 async function fetchTrashedFiles() {
     try {
