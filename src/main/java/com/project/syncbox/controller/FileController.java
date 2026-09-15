@@ -126,6 +126,11 @@ public class FileController {
         return ResponseEntity.ok(fileService.getFileList(principal.getName(), folderId));
     }
 
+    @GetMapping("/recent")
+    public ResponseEntity<List<com.project.syncbox.model.FileMetadata>> listRecentFiles(Principal principal) {
+        return ResponseEntity.ok(fileService.getRecentFiles(principal.getName()));
+    }
+
     @GetMapping("/trash")
     public ResponseEntity<List<FileMetadata>> listTrashedFiles(Principal principal) {
         return ResponseEntity.ok(fileService.getTrashedFileList(principal.getName()));

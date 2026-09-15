@@ -24,6 +24,8 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long
     @Query("SELECT f FROM FileMetadata f LEFT JOIN f.folder fd WHERE f.user = :user AND f.deletedAt IS NOT NULL AND (fd IS NULL OR fd.deletedAt IS NULL)")
     List<FileMetadata> findTopLevelTrashedFiles(@Param("user") User user);
     
+    List<FileMetadata> findTop20ByUserAndDeletedAtIsNullOrderByUploadedAtDesc(User user);
+    
     // For duplicate checking within root or specific folder
     boolean existsByUserAndFolderIsNullAndChecksumAndDeletedAtIsNull(User user, String checksum);
     boolean existsByUserAndFolderIdAndChecksumAndDeletedAtIsNull(User user, Long folderId, String checksum);

@@ -10,6 +10,7 @@ const breadcrumb = document.getElementById('breadcrumb');
 const uploadZone = document.getElementById('uploadZone');
 const filesView = document.getElementById('filesView');
 const trashView = document.getElementById('trashView');
+const recentView = document.getElementById('recentView');
 const uploadForm = document.getElementById('uploadForm');
 
 // Navigation
@@ -21,11 +22,19 @@ function switchView(view) {
         document.getElementById('nav-files').classList.add('active');
         filesView.style.display = 'block';
         trashView.style.display = 'none';
+        recentView.style.display = 'none';
         fetchFiles();
+    } else if (view === 'recent') {
+        document.getElementById('nav-recent').classList.add('active');
+        filesView.style.display = 'none';
+        trashView.style.display = 'none';
+        recentView.style.display = 'block';
+        fetchRecentFiles();
     } else if (view === 'trash') {
         document.getElementById('nav-trash').classList.add('active');
         filesView.style.display = 'none';
         trashView.style.display = 'block';
+        recentView.style.display = 'none';
         fetchTrashedFiles();
     }
 }
@@ -155,6 +164,49 @@ function renderFilesAndFolders(folders, files) {
     });
 }
 
+
+async function fetchRecentFiles() {
+    try {
+        const fileRes = await fetch("/api/files/recent");
+        const files = await fileRes.json();
+        
+        const container = document.getElementById('recentContainer');
+        container.innerHTML = "";
+        
+        if (files.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    ${iconFile}
+                    <p>No recent files</p>
+                </div>
+            `;
+            return;
+        }
+
+        files.forEach(file => {
+            const row = document.createElement("div");
+            row.className = "file-row";
+            
+            row.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">${iconFile}</div>
+                    <div class="file-details">
+                        <span class="file-name" title="${file.originalName}">${file.originalName}</span>
+                        <span class="file-meta">${(file.size / 1024).toFixed(2)} KB • ${new Date(file.uploadedAt).toLocaleDateString()}</span>
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <button class="btn-icon" onclick="openMoveCopyModal('file', '${encodeURIComponent(file.storedName)}')" title="Move or Copy"><svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></button>
+                    <a href="/api/files/download/${encodeURIComponent(file.storedName)}" download="${file.originalName}" class="btn-icon" title="Download">${iconDownload}</a>
+                    <button class="btn-icon danger" onclick="deleteFile('${encodeURIComponent(file.storedName)}', '${file.originalName}')" title="Trash">${iconTrash}</button>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+    } catch (error) {
+        console.error("Failed to fetch recent files:", error);
+    }
+}
 
 async function fetchTrashedFiles() {
     try {
