@@ -89,6 +89,12 @@ public class FolderService {
         return folderRepository.findTopLevelTrashedFolders(user);
     }
 
+    public List<Folder> getAllActiveFolders(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return folderRepository.findAllByUserAndDeletedAtIsNull(user);
+    }
+
     public Folder renameFolder(Long id, String newName, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -157,6 +163,48 @@ public class FolderService {
         folderRepository.save(folder);
         webSocketHandler.broadcastFileUpdate();
         return folder;
+    }
+
+    public Folder copyFolder(Long id, Long targetParentId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Folder folder = folderRepository.findByIdAndUserAndDeletedAtIsNull(id, user)
+                .orElseThrow(() -> new IllegalArgumentException("Folder not found"));
+
+        // Use createFolder to handle unique naming and parent validation
+        String newName = folder.getName();
+        int counter = 1;
+        while (true) {
+            try {
+                Folder newFolder = createFolder(newName, targetParentId, username);
+                
+                // Copy all files in the current folder
+                List<FileMetadata> files = fileService.getFileList(username, folder.getId());
+                for (FileMetadata f : files) {
+                    try {
+                        fileService.copyFile(f.getStoredName(), newFolder.getId(), username);
+                    } catch (Exception e) {
+                        System.err.println("Failed to copy file " + f.getOriginalName() + ": " + e.getMessage());
+                    }
+                }
+
+                // Recursively copy subfolders
+                List<Folder> subfolders = folderRepository.findAllByUserAndParentIdAndDeletedAtIsNull(user, folder.getId());
+                for (Folder sub : subfolders) {
+                    copyFolder(sub.getId(), newFolder.getId(), username);
+                }
+                
+                return newFolder;
+            } catch (IllegalArgumentException e) {
+                if (e.getMessage().contains("already exists")) {
+                    newName = folder.getName() + " - Copy (" + counter + ")";
+                    counter++;
+                } else {
+                    throw e; // Bubble up other exceptions (like cyclic references)
+                }
+            }
+        }
     }
 
     public void deleteFolder(Long id, String username) {

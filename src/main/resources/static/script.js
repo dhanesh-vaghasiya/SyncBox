@@ -98,6 +98,7 @@ async function fetchFiles() {
                     </div>
                 </div>
                 <div class="file-actions">
+                    <button class="btn-icon" onclick="openMoveCopyModal('folder', '${folder.id}')" title="Move or Copy"><svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></button>
                     <button class="btn-icon" onclick="showRenameFolderModal(${folder.id}, '${folder.name}')" title="Rename">${iconEdit}</button>
                     <button class="btn-icon danger" onclick="deleteFolder(${folder.id}, '${folder.name}')" title="Trash">${iconTrash}</button>
                 </div>
@@ -119,6 +120,7 @@ async function fetchFiles() {
                     </div>
                 </div>
                 <div class="file-actions">
+                    <button class="btn-icon" onclick="openMoveCopyModal('file', '${encodeURIComponent(file.storedName)}')" title="Move or Copy"><svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></button>
                     <a href="/api/files/download/${encodeURIComponent(file.storedName)}" download="${file.originalName}" class="btn-icon" title="Download">${iconDownload}</a>
                     <button class="btn-icon danger" onclick="deleteFile('${encodeURIComponent(file.storedName)}', '${file.originalName}')" title="Trash">${iconTrash}</button>
                 </div>
@@ -381,14 +383,19 @@ if(fileInput) {
 document.getElementById("btnKeepBoth")?.addEventListener("click", () => {
     closeModal("duplicateModal");
     if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "KEEP_BOTH");
+    else if (pendingMoveCopyData) executeMoveCopy(pendingMoveCopyData.action, "KEEP_BOTH");
+    pendingMoveCopyData = null;
 });
 document.getElementById("btnReplace")?.addEventListener("click", () => {
     closeModal("duplicateModal");
     if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "REPLACE");
+    else if (pendingMoveCopyData) executeMoveCopy(pendingMoveCopyData.action, "REPLACE");
+    pendingMoveCopyData = null;
 });
 document.getElementById("btnCancelDup")?.addEventListener("click", () => {
     closeModal("duplicateModal");
     pendingDuplicateFile = null;
+    pendingMoveCopyData = null;
     fileInput.value = "";
 });
 
@@ -588,3 +595,129 @@ document.body.addEventListener('drop', (e) => {
         handleFileSelection(e.dataTransfer.files[0]);
     }
 });
+
+// Move / Copy Logic
+let allFolders = [];
+let pendingMoveCopyData = null;
+
+async function openMoveCopyModal(type, id) {
+    document.getElementById('moveCopyItemId').value = id;
+    document.getElementById('moveCopyItemIsFolder').value = (type === 'folder');
+    
+    // Fetch all folders
+    try {
+        const res = await fetch('/api/folders/all');
+        allFolders = await res.json();
+        
+        const select = document.getElementById('moveCopyTargetFolder');
+        select.innerHTML = '<option value="">/ (Root)</option>';
+        
+        // Build map for paths
+        const folderMap = {};
+        allFolders.forEach(f => folderMap[f.id] = f);
+        
+        const parentMap = {};
+        allFolders.forEach(f => parentMap[f.id] = f.parent ? f.parent.id : null);
+        const getPathLocal = (fid) => {
+            let path = '';
+            let currentId = fid;
+            while(currentId) {
+                const f = folderMap[currentId];
+                if(!f) break;
+                path = path ? f.name + ' / ' + path : f.name;
+                currentId = parentMap[currentId];
+            }
+            return path;
+        };
+        
+        // Populate select
+        const options = allFolders.map(f => ({
+            id: f.id,
+            path: getPathLocal(f.id)
+        })).sort((a,b) => a.path.localeCompare(b.path));
+        
+        options.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt.id;
+            el.textContent = '/ ' + opt.path;
+            // Prevent selecting self as target if it is a folder
+            if (type === 'folder' && parseInt(id) === opt.id) {
+                el.disabled = true;
+            }
+            select.appendChild(el);
+        });
+        
+        showModal('moveCopyModal');
+    } catch (e) {
+        console.error('Failed to load folders', e);
+        alert('Failed to load folders');
+    }
+}
+
+async function executeMoveCopy(action, duplicateAction = 'NONE') {
+    const id = document.getElementById('moveCopyItemId').value;
+    const isFolder = document.getElementById('moveCopyItemIsFolder').value === 'true';
+    const targetFolderId = document.getElementById('moveCopyTargetFolder').value;
+    
+    let url = '';
+    let method = action === 'copy' ? 'POST' : 'PUT';
+    
+    if (isFolder) {
+        url = `/api/folders/${id}/${action}`;
+        if (targetFolderId) url += `?parentId=${targetFolderId}`;
+    } else {
+        url = `/api/files/${id}/${action}`;
+        if (targetFolderId) url += `?folderId=${targetFolderId}`;
+        url += (url.includes('?') ? '&' : '?') + `duplicateAction=${duplicateAction}`;
+    }
+    
+    try {
+        const res = await fetch(url, { method });
+        if (res.ok) {
+            closeModal('moveCopyModal');
+            if (currentView === 'files') fetchFiles();
+        } else if (res.status === 409 && !isFolder) {
+            // Duplicate detected!
+            closeModal('moveCopyModal');
+            pendingMoveCopyData = { action, id, targetFolderId };
+            showModal('duplicateModal');
+        } else {
+            const text = await res.text();
+            alert('Operation failed: ' + text);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Operation failed');
+    }
+}
+
+// Override duplicate modal handlers to also support move/copy
+const origBtnKeepBoth = document.getElementById("btnKeepBoth");
+const origBtnReplace = document.getElementById("btnReplace");
+const origBtnCancelDup = document.getElementById("btnCancelDup");
+
+if(origBtnKeepBoth) {
+    origBtnKeepBoth.onclick = () => {
+        closeModal("duplicateModal");
+        if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "KEEP_BOTH");
+        else if (pendingMoveCopyData) executeMoveCopy(pendingMoveCopyData.action, "KEEP_BOTH");
+        pendingMoveCopyData = null;
+    };
+}
+if(origBtnReplace) {
+    origBtnReplace.onclick = () => {
+        closeModal("duplicateModal");
+        if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "REPLACE");
+        else if (pendingMoveCopyData) executeMoveCopy(pendingMoveCopyData.action, "REPLACE");
+        pendingMoveCopyData = null;
+    };
+}
+if(origBtnCancelDup) {
+    origBtnCancelDup.onclick = () => {
+        closeModal("duplicateModal");
+        pendingDuplicateFile = null;
+        pendingMoveCopyData = null;
+        fileInput.value = "";
+    };
+}
+

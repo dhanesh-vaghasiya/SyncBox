@@ -187,16 +187,35 @@ public class FileController {
     public ResponseEntity<String> moveFile(
             @PathVariable String filename,
             @RequestParam(value = "folderId", required = false) Long folderId,
+            @RequestParam(value = "duplicateAction", defaultValue = "NONE") String duplicateAction,
             Principal principal) {
         try {
-            boolean moved = fileService.moveFile(filename, folderId, principal.getName());
+            boolean moved = fileService.moveFile(filename, folderId, principal.getName(), duplicateAction);
             if (moved) {
                 return ResponseEntity.ok("File moved successfully");
             } else {
                 return ResponseEntity.notFound().build();
             }
+        } catch (com.project.syncbox.exception.DuplicateFileException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT).body(e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{filename:.+}/copy")
+    public ResponseEntity<com.project.syncbox.model.FileMetadata> copyFile(
+            @PathVariable String filename,
+            @RequestParam(value = "folderId", required = false) Long folderId,
+            @RequestParam(value = "duplicateAction", defaultValue = "NONE") String duplicateAction,
+            Principal principal) {
+        try {
+            com.project.syncbox.model.FileMetadata copiedFile = fileService.copyFile(filename, folderId, principal.getName(), duplicateAction);
+            return ResponseEntity.ok(copiedFile);
+        } catch (com.project.syncbox.exception.DuplicateFileException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT).build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 }

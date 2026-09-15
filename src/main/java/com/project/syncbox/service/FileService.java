@@ -234,12 +234,27 @@ public class FileService {
         fileMetadataRepository.delete(metadata);
     }
 
-    public boolean moveFile(String filename, Long targetFolderId, String username) {
+    public boolean moveFile(String filename, Long targetFolderId, String username, String duplicateAction) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         FileMetadata metadata = fileMetadataRepository.findByUserAndStoredName(user, filename)
                 .orElseThrow(() -> new IllegalArgumentException("File not found"));
+
+        if (checkFileExists(metadata.getChecksum(), username, targetFolderId)) {
+            if ("NONE".equals(duplicateAction)) {
+                throw new DuplicateFileException("DUPLICATE_CHECKSUM");
+            } else if ("REPLACE".equals(duplicateAction)) {
+                List<FileMetadata> allFilesInFolder = getFileList(username, targetFolderId);
+                for (FileMetadata fm : allFilesInFolder) {
+                    if (metadata.getChecksum().equals(fm.getChecksum()) && !fm.getId().equals(metadata.getId())) {
+                        fm.setDeletedAt(LocalDateTime.now());
+                        fileMetadataRepository.save(fm);
+                    }
+                }
+            }
+            // KEEP_BOTH does nothing, just proceeds to move
+        }
 
         if (targetFolderId != null) {
             Folder targetFolder = folderRepository.findByIdAndUserAndDeletedAtIsNull(targetFolderId, user)
@@ -252,6 +267,59 @@ public class FileService {
         fileMetadataRepository.save(metadata);
         webSocketHandler.broadcastFileUpdate();
         return true;
+    }
+
+    public FileMetadata copyFile(String filename, Long targetFolderId, String username, String duplicateAction) throws IOException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        FileMetadata sourceMetadata = fileMetadataRepository.findByUserAndStoredName(user, filename)
+                .orElseThrow(() -> new IllegalArgumentException("File not found"));
+
+        if (checkFileExists(sourceMetadata.getChecksum(), username, targetFolderId)) {
+            if ("NONE".equals(duplicateAction)) {
+                throw new DuplicateFileException("DUPLICATE_CHECKSUM");
+            } else if ("REPLACE".equals(duplicateAction)) {
+                List<FileMetadata> allFilesInFolder = getFileList(username, targetFolderId);
+                for (FileMetadata fm : allFilesInFolder) {
+                    if (sourceMetadata.getChecksum().equals(fm.getChecksum())) {
+                        fm.setDeletedAt(LocalDateTime.now());
+                        fileMetadataRepository.save(fm);
+                    }
+                }
+            }
+        }
+
+        Folder targetFolder = null;
+        if (targetFolderId != null) {
+            targetFolder = folderRepository.findByIdAndUserAndDeletedAtIsNull(targetFolderId, user)
+                    .orElseThrow(() -> new IllegalArgumentException("Target folder not found"));
+        }
+
+        String newStoredName = getUniqueFilename(sourceMetadata.getOriginalName(), user);
+        
+        Path sourcePath = Paths.get(UPLOAD_DIR).resolve(sourceMetadata.getStoredName());
+        Path targetPath = Paths.get(UPLOAD_DIR).resolve(newStoredName);
+        Files.copy(sourcePath, targetPath);
+
+        FileMetadata newMetadata = new FileMetadata();
+        newMetadata.setOriginalName(sourceMetadata.getOriginalName());
+        newMetadata.setStoredName(newStoredName);
+        newMetadata.setSize(sourceMetadata.getSize());
+        newMetadata.setContentType(sourceMetadata.getContentType());
+        newMetadata.setUploadedAt(LocalDateTime.now());
+        newMetadata.setUser(user);
+        newMetadata.setChecksum(sourceMetadata.getChecksum());
+        newMetadata.setFolder(targetFolder);
+
+        fileMetadataRepository.save(newMetadata);
+        webSocketHandler.broadcastFileUpdate();
+        return newMetadata;
+    }
+
+    // Overloaded method for recursive copyFolder without passing duplicateAction (defaults to KEEP_BOTH for folder structure copying)
+    public FileMetadata copyFile(String filename, Long targetFolderId, String username) throws IOException {
+        return copyFile(filename, targetFolderId, username, "KEEP_BOTH");
     }
     public com.project.syncbox.model.UploadSession createUploadSession(String originalFilename, String contentType, long totalSize, int totalChunks, String username, Long folderId) throws IOException {
         User user = userRepository.findByUsername(username)

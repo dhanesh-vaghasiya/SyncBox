@@ -43,6 +43,11 @@ public class FolderController {
         }
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<List<Folder>> listAllFolders(Principal principal) {
+        return ResponseEntity.ok(folderService.getAllActiveFolders(principal.getName()));
+    }
+
     @GetMapping("/trash")
     public ResponseEntity<List<Folder>> listTrashedFolders(Principal principal) {
         return ResponseEntity.ok(folderService.getTrashedFolders(principal.getName()));
@@ -68,6 +73,19 @@ public class FolderController {
             Principal principal) {
         try {
             Folder folder = folderService.moveFolder(id, parentId, principal.getName());
+            return ResponseEntity.ok(folder);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/{id}/copy")
+    public ResponseEntity<Folder> copyFolder(
+            @PathVariable Long id,
+            @RequestParam(value = "parentId", required = false) Long parentId,
+            Principal principal) {
+        try {
+            Folder folder = folderService.copyFolder(id, parentId, principal.getName());
             return ResponseEntity.ok(folder);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();

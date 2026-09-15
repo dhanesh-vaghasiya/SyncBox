@@ -129,6 +129,26 @@
         </div>
     </div>
 
+    <div id="moveCopyModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="moveCopyTitle">Move or Copy</h3>
+            <p id="moveCopyDesc">Select the destination folder.</p>
+            <input type="hidden" id="moveCopyItemId" />
+            <input type="hidden" id="moveCopyItemIsFolder" />
+            
+            <select id="moveCopyTargetFolder" class="modal-input" style="padding: 12px; height: auto;">
+                <option value="">/ (Root)</option>
+                <!-- Filled dynamically -->
+            </select>
+            
+            <div class="modal-actions" style="margin-top: 16px;">
+                <button class="btn-secondary" onclick="closeModal('moveCopyModal')" style="flex: 1;">Cancel</button>
+                <button class="btn-primary" onclick="executeMoveCopy('copy')" style="flex: 1; background: var(--success-color);">Copy</button>
+                <button class="btn-primary" onclick="executeMoveCopy('move')" style="flex: 1;">Move</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Connect logic -->
     <script src="/script.js"></script>
 </body>

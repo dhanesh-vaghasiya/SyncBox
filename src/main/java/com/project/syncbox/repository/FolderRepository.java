@@ -15,6 +15,7 @@ import java.util.Optional;
 public interface FolderRepository extends JpaRepository<Folder, Long> {
     List<Folder> findAllByUserAndParentIsNullAndDeletedAtIsNull(User user);
     List<Folder> findAllByUserAndParentIdAndDeletedAtIsNull(User user, Long parentId);
+    List<Folder> findAllByUserAndDeletedAtIsNull(User user);
     
     @Query("SELECT f FROM Folder f LEFT JOIN f.parent p WHERE f.user = :user AND f.deletedAt IS NOT NULL AND (p IS NULL OR p.deletedAt IS NULL)")
     List<Folder> findTopLevelTrashedFolders(@Param("user") User user);
