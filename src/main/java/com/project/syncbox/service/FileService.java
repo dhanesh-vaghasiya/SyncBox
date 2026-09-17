@@ -408,24 +408,6 @@ public class FileService {
         }
     }
 
-    public java.util.List<com.project.syncbox.dto.PreflightResponseDTO> preflightBatch(
-            java.util.List<com.project.syncbox.dto.PreflightRequestDTO> requests, String username) {
-        java.util.List<com.project.syncbox.dto.PreflightResponseDTO> responses = new java.util.ArrayList<>();
-        
-        for (com.project.syncbox.dto.PreflightRequestDTO req : requests) {
-            boolean conflict = checkFileExists(req.getChecksum(), username, req.getFolderId());
-            com.project.syncbox.dto.PreflightResponseDTO res = new com.project.syncbox.dto.PreflightResponseDTO();
-            res.setClientId(req.getClientId());
-            res.setFileName(req.getFileName());
-            res.setChecksum(req.getChecksum());
-            res.setStatus(conflict ? "SERVER_CONFLICT" : "NEW");
-            responses.add(res);
-        }
-        
-        return responses;
-    }
-
-
     public void completeUpload(String sessionId, String duplicateAction, String username) throws IOException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

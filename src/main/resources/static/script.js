@@ -386,14 +386,240 @@ function calculateChecksum(file) {
 
 // Upload Handling
 const fileInput = document.getElementById('fileInput');
+const btnProgressBg = document.getElementById('btnProgressBg');
+const btnUploadText = document.getElementById('btnUploadText');
+const btnUploadIcon = document.getElementById('btnUploadIcon');
+const headerUploadBtn = document.getElementById('headerUploadBtn');
+const pauseResumeContainer = document.getElementById('pauseResumeContainer');
+const pauseBtn = document.getElementById('pauseBtn');
+const resumeBtn = document.getElementById('resumeBtn');
+
+function setUploadUI(text, progress = 0, showPause = false, isError = false) {
+    btnUploadText.innerText = text;
+    btnProgressBg.style.width = progress + "%";
+    
+    if (isError) {
+        btnProgressBg.style.background = "rgba(239, 68, 68, 0.2)"; // Red tint
+        btnUploadText.style.color = "var(--danger-color)";
+    } else {
+        btnProgressBg.style.background = "rgba(79, 70, 229, 0.2)"; // Indigo tint
+        btnUploadText.style.color = "";
+    }
+    
+    if (showPause) {
+        pauseResumeContainer.style.display = "flex";
+        btnUploadIcon.style.display = "none";
+    } else {
+        pauseResumeContainer.style.display = "none";
+        btnUploadIcon.style.display = "block";
+    }
+}
+
+function resetUploadUI() {
+    setUploadUI("Upload", 0, false, false);
+    btnProgressBg.style.width = "0%";
+}
+
+async function handleFileSelection(file) {
+    if (!file) return;
+
+    try {
+        setUploadUI("Verifying...", 0, false);
+        
+        const checksum = await calculateChecksum(file);
+        let url = `/api/files/check?checksum=${encodeURIComponent(checksum)}`;
+        if (currentFolderId) url += `&folderId=${currentFolderId}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Verification failed");
+        
+        const exists = await res.json();
+        
+        if (exists) {
+            pendingDuplicateFile = file;
+            resetUploadUI();
+            showModal("duplicateModal");
+        } else {
+            uploadFile(file, "NONE");
+        }
+    } catch (error) {
+        setUploadUI("Error!", 100, false, true);
+        setTimeout(resetUploadUI, 3000);
+    }
+}
 
 if(fileInput) {
     fileInput.addEventListener('change', () => {
         if(fileInput.files.length > 0) {
-            uploadManager.handleFilesSelection(fileInput.files);
-            fileInput.value = ""; // Reset input so same files can be selected again
+            handleFileSelection(fileInput.files[0]);
         }
     });
+}
+
+document.getElementById("btnKeepBoth")?.addEventListener("click", () => {
+    closeModal("duplicateModal");
+    if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "KEEP_BOTH");
+    else if (pendingMoveCopyData) executeMoveCopy(pendingMoveCopyData.action, "KEEP_BOTH");
+    pendingMoveCopyData = null;
+});
+document.getElementById("btnReplace")?.addEventListener("click", () => {
+    closeModal("duplicateModal");
+    if (pendingDuplicateFile) uploadFile(pendingDuplicateFile, "REPLACE");
+    else if (pendingMoveCopyData) executeMoveCopy(pendingMoveCopyData.action, "REPLACE");
+    pendingMoveCopyData = null;
+});
+document.getElementById("btnCancelDup")?.addEventListener("click", () => {
+    closeModal("duplicateModal");
+    pendingDuplicateFile = null;
+    pendingMoveCopyData = null;
+    fileInput.value = "";
+});
+
+let currentUploadAbortController = null;
+let isUploadPaused = false;
+
+document.getElementById("pauseBtn")?.addEventListener("click", () => {
+    isUploadPaused = true;
+    if (currentUploadAbortController) {
+        currentUploadAbortController.abort();
+    }
+    document.getElementById("pauseBtn").style.display = "none";
+    document.getElementById("resumeBtn").style.display = "block";
+    setUploadUI("Paused", parseInt(btnProgressBg.style.width), true);
+});
+
+document.getElementById("cancelUploadBtn")?.addEventListener("click", () => {
+    isUploadPaused = true;
+    if (currentUploadAbortController) {
+        currentUploadAbortController.abort();
+    }
+    
+    const file = fileInput.files[0];
+    if (file) {
+        const storageKey = `upload_${file.name}_${file.size}`;
+        localStorage.removeItem(storageKey);
+    }
+    
+    resetUploadUI();
+    fileInput.value = "";
+});
+
+document.getElementById("resumeBtn")?.addEventListener("click", () => {
+    isUploadPaused = false;
+    document.getElementById("resumeBtn").style.display = "none";
+    document.getElementById("pauseBtn").style.display = "block";
+    
+    const file = fileInput.files[0];
+    if (file) {
+        const storageKey = 'upload_session_' + file.name + '_' + file.size;
+        const sessionId = localStorage.getItem(storageKey);
+        if (sessionId) {
+            uploadFile(file, "NONE"); 
+        } else {
+            handleFileSelection(file);
+        }
+    }
+});
+
+async function uploadFile(file, duplicateAction = "NONE") {
+    const CHUNK_SIZE = 20 * 1024 * 1024;
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    const storageKey = `upload_${file.name}_${file.size}`;
+    let sessionId = localStorage.getItem(storageKey);
+    if (sessionId === "undefined" || sessionId === "null") {
+        sessionId = null;
+        localStorage.removeItem(storageKey);
+    }
+    let uploadedChunks = [];
+    
+    setUploadUI("Starting...", 0, true);
+    pauseBtn.style.display = "block";
+    resumeBtn.style.display = "none";
+
+    try {
+        if (!sessionId) {
+            let initUrl = `/api/files/upload/session?originalName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}&totalSize=${file.size}&totalChunks=${totalChunks}`;
+            if (currentFolderId) initUrl += `&folderId=${currentFolderId}`;
+            
+            const initRes = await fetch(initUrl, { method: "POST" });
+            if (!initRes.ok) throw new Error("Failed to init");
+            const data = await initRes.json();
+            sessionId = data.id;
+            localStorage.setItem(storageKey, sessionId);
+        } else {
+            const statusRes = await fetch(`/api/files/upload/session/${sessionId}/status`);
+            if (statusRes.ok) {
+                const data = await statusRes.json();
+                uploadedChunks = data.uploadedChunks;
+            }
+        }
+    } catch (e) {
+        setUploadUI("Init failed", 100, false, true);
+        setTimeout(resetUploadUI, 3000);
+        return;
+    }
+
+    for (let i = 0; i < totalChunks; i++) {
+        if (isUploadPaused) return;
+
+        const progressPercent = Math.round((i / totalChunks) * 100);
+        setUploadUI(`${progressPercent}%`, progressPercent, true);
+
+        if (uploadedChunks.includes(i)) continue;
+
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = file.slice(start, end);
+
+        const formData = new FormData();
+        formData.append("file", chunk);
+        formData.append("chunkIndex", i);
+
+        currentUploadAbortController = new AbortController();
+
+        try {
+            const chunkRes = await fetch(`/api/files/upload/session/${sessionId}/part/${i}`, {
+                method: "PUT",
+                body: formData,
+                signal: currentUploadAbortController.signal
+            });
+            if (!chunkRes.ok) throw new Error("Chunk failed");
+        } catch (e) {
+            if (e.name === 'AbortError') {
+                return;
+            }
+            throw e;
+        }
+    }
+    
+    if (isUploadPaused) return;
+
+    setUploadUI("Finishing...", 100, false);
+    
+    try {
+        const completeResponse = await fetch(`/api/files/upload/session/${sessionId}/complete?duplicateAction=${duplicateAction}`, {
+            method: "POST"
+        });
+
+        if (completeResponse.ok) {
+            btnUploadText.innerText = "Done!";
+            btnProgressBg.style.background = "rgba(16, 185, 129, 0.2)"; // Green tint
+            fileInput.value = "";
+            localStorage.removeItem(storageKey);
+            setTimeout(resetUploadUI, 3000);
+            if(currentView === 'files') fetchFiles();
+        } else if (completeResponse.status === 409) {
+            setUploadUI("Duplicate!", 100, false, true);
+            fileInput.value = "";
+            localStorage.removeItem(storageKey);
+            setTimeout(resetUploadUI, 3000);
+        } else {
+            throw new Error(await completeResponse.text());
+        }
+    } catch (e) {
+        setUploadUI("Failed!", 100, false, true);
+        setTimeout(resetUploadUI, 3000);
+    }
 }
 
 function connectWebSocket() {
@@ -442,7 +668,7 @@ document.body.addEventListener('drop', (e) => {
     document.body.classList.remove('drag-active');
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        uploadManager.handleFilesSelection(e.dataTransfer.files);
+        handleFileSelection(e.dataTransfer.files[0]);
     }
 });
 
