@@ -53,6 +53,13 @@ public class FileController {
         return ResponseEntity.ok(exists);
     }
 
+    @PostMapping("/preflight")
+    public ResponseEntity<List<com.project.syncbox.dto.PreflightResponseDTO>> preflightBatch(
+            @RequestBody List<com.project.syncbox.dto.PreflightRequestDTO> requests,
+            Principal principal) {
+        return ResponseEntity.ok(fileService.preflightBatch(requests, principal.getName()));
+    }
+
     @PostMapping("/upload/session")
     public ResponseEntity<com.project.syncbox.model.UploadSession> createUploadSession(
             @RequestParam("originalName") String originalName,

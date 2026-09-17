@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncBox - Login</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body style="margin: 0;">
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 28px; height: 28px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    SyncBox
+                </h2>
+                <p>Welcome back! Please login to your account.</p>
+            </div>
+            
+            <div id="alertMsg" class="auth-alert"></div>
+            
+            <form action="/login" method="post" class="auth-form" id="loginForm">
+                <div class="auth-input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" class="auth-input" placeholder="Enter your username" required>
+                </div>
+                
+                <div class="auth-input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="auth-input" placeholder="Enter your password" required>
+                </div>
+                
+                <button type="submit" class="auth-btn">Sign In</button>
+            </form>
+            
+            <div class="auth-footer">
+                Don't have an account? <a href="/signup.html">Sign up</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const alertMsg = document.getElementById('alertMsg');
+        
+        if (window.location.search.includes('error')) {
+            alertMsg.className = 'auth-alert error';
+            alertMsg.innerText = 'Invalid username or password.';
+        }
+        if (window.location.search.includes('logout')) {
+            alertMsg.className = 'auth-alert success';
+            alertMsg.innerText = 'You have been logged out.';
+        }
+    </script>
+</body>
+</html>

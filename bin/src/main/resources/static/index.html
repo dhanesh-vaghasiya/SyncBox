@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SyncBox - Premium File Storage</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="brand">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 28px; height: 28px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            SyncBox
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item active" id="nav-files" onclick="switchView('files')">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                My Files
+            </li>
+            <li class="nav-item" id="nav-recent" onclick="switchView('recent')">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Recent Files
+            </li>
+            <li class="nav-item" id="nav-trash" onclick="switchView('trash')">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Trash
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <form action="/logout" method="post" style="margin: 0;">
+                <button type="submit" class="btn-logout">
+                    <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Logout
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainDropZone">
+        <div id="dragOverlay" class="drag-overlay">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            <h2>Drop files to upload</h2>
+        </div>
+        <!-- Header -->
+        <div class="header">
+            <div class="breadcrumb" id="breadcrumb">
+                <span>Home</span>
+            </div>
+            <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
+                <input type="text" id="searchInput" placeholder="Search..." class="modal-input" style="padding: 8px 12px; margin: 0; min-width: 200px;" oninput="handleSearch()">
+                <input type="file" id="fileInput" name="file" style="display: none;" />
+                
+                <div id="pauseResumeContainer" style="display: none; align-items: center; gap: 4px;">
+                    <button type="button" class="btn-secondary" id="pauseBtn" style="padding: 6px; border-radius: 6px;" title="Pause">
+                        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
+                    <button type="button" class="btn-primary" id="resumeBtn" style="display: none; padding: 6px; border-radius: 6px;" title="Resume">
+                        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
+                    <button type="button" class="btn-secondary" id="cancelUploadBtn" style="padding: 6px; border-radius: 6px;" title="Cancel Upload">
+                        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <button class="btn-secondary" id="headerUploadBtn" onclick="document.getElementById('fileInput').click()" style="position: relative; overflow: hidden;">
+                    <div id="btnProgressBg" style="position: absolute; left: 0; top: 0; bottom: 0; background: rgba(79, 70, 229, 0.1); width: 0%; z-index: 0; transition: width 0.2s;"></div>
+                    <svg id="btnUploadIcon" style="width: 20px; height: 20px; z-index: 1; position: relative;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    <span class="btn-text" id="btnUploadText" style="z-index: 1; position: relative;">Upload</span>
+                </button>
+                
+                <button class="btn-primary" onclick="showCreateFolderModal()">
+                    <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    <span class="btn-text">New Folder</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Files View -->
+        <div class="view-container" id="filesView">
+            <div class="file-list" id="filesContainer">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+
+        <!-- Recent View -->
+        <div class="view-container" id="recentView" style="display: none;">
+            <div style="margin-bottom: 24px;">
+                <h2 style="margin: 0; color: var(--text-main); font-weight: 600;">Recent Files</h2>
+                <p style="margin: 4px 0 0 0; color: var(--text-muted); font-size: 14px;">Files you have recently accessed.</p>
+            </div>
+            
+            <div class="file-list" id="recentContainer">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+
+        <!-- Trash View -->
+        <div class="view-container" id="trashView" style="display: none;">
+            <div style="margin-bottom: 24px;">
+                <h2 style="margin: 0; color: var(--text-main); font-weight: 600;">Trash</h2>
+                <p style="margin: 4px 0 0 0; color: var(--text-muted); font-size: 14px;">Items in trash will be permanently deleted after 30 days automatically.</p>
+            </div>
+            
+            <div class="file-list" id="trashContainer">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="duplicateModal" class="modal-overlay">
+        <div class="modal">
+            <h3 style="color: var(--danger-color);">File Already Exists</h3>
+            <p>A file with identical contents was found in this folder. What would you like to do?</p>
+            <div class="modal-actions" style="flex-direction: column;">
+                <button class="btn-primary" id="btnReplace" style="width: 100%; justify-content: center;">Replace Existing File</button>
+                <button class="btn-secondary" id="btnKeepBoth" style="width: 100%;">Keep Both (Upload as Duplicate)</button>
+                <button class="btn-secondary" id="btnCancelDup" style="width: 100%; border-color: transparent;">Cancel Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="createFolderModal" class="modal-overlay">
+        <div class="modal">
+            <h3>Create New Folder</h3>
+            <input type="text" id="folderNameInput" class="modal-input" placeholder="Enter folder name" autocomplete="off" />
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('createFolderModal')">Cancel</button>
+                <button class="btn-primary" onclick="createFolder()">Create Folder</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="renameFolderModal" class="modal-overlay">
+        <div class="modal">
+            <h3>Rename Folder</h3>
+            <input type="hidden" id="renameFolderId" />
+            <input type="text" id="renameFolderInput" class="modal-input" placeholder="New folder name" autocomplete="off" />
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('renameFolderModal')">Cancel</button>
+                <button class="btn-primary" onclick="renameFolder()">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="moveCopyModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="moveCopyTitle">Move or Copy</h3>
+            <p id="moveCopyDesc">Select the destination folder.</p>
+            <input type="hidden" id="moveCopyItemId" />
+            <input type="hidden" id="moveCopyItemIsFolder" />
+            
+            <select id="moveCopyTargetFolder" class="modal-input" style="padding: 12px; height: auto;">
+                <option value="">/ (Root)</option>
+                <!-- Filled dynamically -->
+            </select>
+            
+            <div class="modal-actions" style="margin-top: 16px;">
+                <button class="btn-secondary" onclick="closeModal('moveCopyModal')" style="flex: 1;">Cancel</button>
+                <button class="btn-primary" onclick="executeMoveCopy('copy')" style="flex: 1; background: var(--success-color);">Copy</button>
+                <button class="btn-primary" onclick="executeMoveCopy('move')" style="flex: 1;">Move</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connect logic -->
+    <script src="/script.js"></script>
+</body>
+</html>
