@@ -29,12 +29,19 @@ self.addEventListener('message', async (e) => {
             bufferToHash.set(new Uint8Array(lastBuf), 2 * CHUNK_SIZE);
         }
 
-        // Native hardware-accelerated SHA-256
-        const hashBuffer = await crypto.subtle.digest('SHA-256', bufferToHash);
-        
-        // Convert to hex string
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        let hashHex;
+        if (crypto.subtle) {
+            // Native hardware-accelerated SHA-256
+            const hashBuffer = await crypto.subtle.digest('SHA-256', bufferToHash);
+            
+            // Convert to hex string
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } else {
+            // Fallback for non-secure contexts (e.g. HTTP over local network hotspot)
+            // Generates a pseudo-random hash so the upload can proceed without client-side deduplication
+            hashHex = "fallback_" + Date.now().toString(16) + "_" + Math.random().toString(16).substring(2);
+        }
         
         self.postMessage({ success: true, hash: hashHex });
     } catch (err) {
