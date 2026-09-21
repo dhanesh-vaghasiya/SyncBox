@@ -113,17 +113,25 @@ public class FileController {
             @PathVariable String sessionId,
             @RequestParam(value = "duplicateAction", defaultValue = "NONE") String duplicateAction,
             Principal principal) {
-        try {
-            fileService.completeUpload(sessionId, duplicateAction, principal.getName());
-            return ResponseEntity.ok("File uploaded successfully");
-        } catch (DuplicateFileException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Failed to complete upload.");
-        }
+        String username = principal.getName();
+        
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                fileService.completeUpload(sessionId, duplicateAction, username);
+            } catch (DuplicateFileException e) {
+                // If it fails due to duplicate during async processing (e.g., from a hotspot fallback hash),
+                // forcefully keep both so the file isn't silently lost.
+                try {
+                    fileService.completeUpload(sessionId, "KEEP_BOTH", username);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        
+        return ResponseEntity.ok("File assembly started");
     }
 
     @GetMapping("/list")

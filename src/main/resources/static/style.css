@@ -674,3 +674,85 @@ body.drag-active .drag-overlay {
   padding: 4px 12px;
   font-size: 13px;
 }
+
+/* Mobile Responsive Design */
+.mobile-menu-btn { display: none; }
+.sidebar-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.sidebar-overlay.active { display: block; opacity: 1; }
+
+@media (max-width: 768px) {
+    .mobile-menu-btn { display: flex; margin-right: 12px; }
+    
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 100;
+    }
+    
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    
+    .header {
+        padding: 0 16px;
+        flex-wrap: wrap;
+        height: auto;
+        min-height: 70px;
+    }
+    
+    .header-actions {
+        flex-wrap: wrap;
+        width: 100%;
+        margin-top: 12px;
+        margin-bottom: 12px;
+        justify-content: space-between;
+    }
+    
+    .header-actions input#searchInput {
+        width: 100%;
+        min-width: unset;
+        order: -1;
+    }
+
+    .btn-primary .btn-text {
+        display: none;
+    }
+    .btn-primary {
+        padding: 10px;
+    }
+    #btnUploadText { display: none; }
+    
+    .view-container {
+        padding: 16px;
+    }
+    
+    .file-row {
+        flex-wrap: wrap;
+        padding: 12px;
+    }
+    
+    .file-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 12px;
+        border-top: 1px solid var(--border-color);
+        padding-top: 8px;
+    }
+    
+    #floatingUploadPanel {
+        width: calc(100vw - 32px);
+        right: 16px;
+        bottom: 16px;
+    }
+}

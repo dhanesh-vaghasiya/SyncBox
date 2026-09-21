@@ -102,8 +102,98 @@ function handleSearch() {
     
     const filteredFolders = currentFetchedFolders.filter(f => f.name.toLowerCase().includes(query));
     const filteredFiles = currentFetchedFiles.filter(f => f.originalName.toLowerCase().includes(query));
-    
     renderFilesAndFolders(filteredFolders, filteredFiles);
+}
+
+function toggleSelectAll(checked, containerId) {
+    const checkboxes = document.querySelectorAll(`#${containerId} .item-checkbox`);
+    checkboxes.forEach(cb => cb.checked = checked);
+    updateBulkActions(containerId);
+}
+
+function updateBulkActions(containerId) {
+    const checkboxes = document.querySelectorAll(`#${containerId} .item-checkbox:checked`);
+    const actionContainer = document.getElementById(`bulkActions_${containerId}`);
+    const selectAllCb = document.getElementById(`selectAll_${containerId}`);
+    
+    if (selectAllCb) {
+        const allCheckboxes = document.querySelectorAll(`#${containerId} .item-checkbox`);
+        selectAllCb.checked = allCheckboxes.length > 0 && allCheckboxes.length === checkboxes.length;
+    }
+    
+    if (!actionContainer) return;
+    
+    if (checkboxes.length > 0) {
+        actionContainer.style.display = 'flex';
+        document.getElementById(`bulkCount_${containerId}`).innerText = `${checkboxes.length} selected`;
+    } else {
+        actionContainer.style.display = 'none';
+    }
+}
+
+async function bulkDelete(containerId) {
+    const checked = document.querySelectorAll(`#${containerId} .item-checkbox:checked`);
+    if (checked.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to move ${checked.length} selected items to trash?`)) return;
+    
+    for (const cb of checked) {
+        const type = cb.getAttribute('data-type');
+        const id = cb.getAttribute('data-id');
+        
+        try {
+            if (type === 'folder') {
+                await fetch(`/api/folders/${id}`, {method: 'DELETE'});
+            } else if (type === 'file') {
+                await fetch(`/api/files/${id}`, { method: "DELETE" });
+            }
+        } catch (e) { console.error(e); }
+    }
+    
+    if (containerId === 'filesContainer') fetchFiles();
+    else if (containerId === 'recentContainer') fetchRecentFiles();
+}
+
+async function bulkRestore(containerId) {
+    const checked = document.querySelectorAll(`#${containerId} .item-checkbox:checked`);
+    if (checked.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to restore ${checked.length} selected items?`)) return;
+    
+    for (const cb of checked) {
+        const type = cb.getAttribute('data-type');
+        const id = cb.getAttribute('data-id');
+        
+        try {
+            if (type === 'folder') {
+                await fetch(`/api/folders/${id}/restore`, {method: 'POST'});
+            } else if (type === 'file') {
+                await fetch(`/api/files/${id}/restore`, { method: "POST" });
+            }
+        } catch (e) { console.error(e); }
+    }
+    fetchTrashedFiles();
+}
+
+async function bulkPermDelete(containerId) {
+    const checked = document.querySelectorAll(`#${containerId} .item-checkbox:checked`);
+    if (checked.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to PERMANENTLY delete ${checked.length} selected items? This cannot be undone.`)) return;
+    
+    for (const cb of checked) {
+        const type = cb.getAttribute('data-type');
+        const id = cb.getAttribute('data-id');
+        
+        try {
+            if (type === 'folder') {
+                await fetch(`/api/folders/${id}/permanent`, {method: 'DELETE'});
+            } else if (type === 'file') {
+                await fetch(`/api/files/${id}/permanent`, { method: "DELETE" });
+            }
+        } catch (e) { console.error(e); }
+    }
+    fetchTrashedFiles();
 }
 
 function renderFilesAndFolders(folders, files) {
@@ -119,13 +209,35 @@ function renderFilesAndFolders(folders, files) {
         return;
     }
 
+    const headerRow = document.createElement("div");
+    headerRow.className = "file-row header-row";
+    headerRow.style.background = "transparent";
+    headerRow.style.boxShadow = "none";
+    headerRow.style.paddingBottom = "8px";
+    headerRow.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <input type="checkbox" id="selectAll_filesContainer" onchange="toggleSelectAll(this.checked, 'filesContainer')" style="width: 18px; height: 18px; cursor: pointer;">
+            <label for="selectAll_filesContainer" style="font-weight: 600; color: var(--text-main); cursor: pointer;">Select All</label>
+        </div>
+        <div id="bulkActions_filesContainer" style="display: none; align-items: center; gap: 12px;">
+            <span id="bulkCount_filesContainer" style="color: var(--text-muted); font-size: 14px;">0 selected</span>
+            <button class="btn-icon danger" onclick="bulkDelete('filesContainer')" title="Delete Selected">
+                ${iconTrash}
+            </button>
+        </div>
+    `;
+    filesContainer.appendChild(headerRow);
+
     // Render Folders
     folders.forEach(folder => {
         const row = document.createElement("div");
         row.className = "file-row";
         
         row.innerHTML = `
-            <div class="file-info" onclick="navigateTo(${folder.id})">
+            <div style="display: flex; align-items: center; padding-right: 16px;">
+                <input type="checkbox" class="item-checkbox" data-type="folder" data-id="${folder.id}" onchange="updateBulkActions('filesContainer')" style="width: 18px; height: 18px; cursor: pointer;">
+            </div>
+            <div class="file-info" onclick="navigateTo(${folder.id})" style="flex: 1; cursor: pointer;">
                 <div class="file-icon folder-icon">${iconFolder}</div>
                 <div class="file-details">
                     <span class="file-name">${folder.name}</span>
@@ -147,7 +259,10 @@ function renderFilesAndFolders(folders, files) {
         row.className = "file-row";
         
         row.innerHTML = `
-            <div class="file-info">
+            <div style="display: flex; align-items: center; padding-right: 16px;">
+                <input type="checkbox" class="item-checkbox" data-type="file" data-id="${encodeURIComponent(file.storedName)}" onchange="updateBulkActions('filesContainer')" style="width: 18px; height: 18px; cursor: pointer;">
+            </div>
+            <div class="file-info" style="flex: 1;">
                 <div class="file-icon">${iconFile}</div>
                 <div class="file-details">
                     <span class="file-name" title="${file.originalName}">${file.originalName}</span>
@@ -229,13 +344,38 @@ async function fetchTrashedFiles() {
             return;
         }
 
+        const headerRow = document.createElement("div");
+        headerRow.className = "file-row header-row";
+        headerRow.style.background = "transparent";
+        headerRow.style.boxShadow = "none";
+        headerRow.style.paddingBottom = "8px";
+        headerRow.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <input type="checkbox" id="selectAll_trashContainer" onchange="toggleSelectAll(this.checked, 'trashContainer')" style="width: 18px; height: 18px; cursor: pointer;">
+                <label for="selectAll_trashContainer" style="font-weight: 600; color: var(--text-main); cursor: pointer;">Select All</label>
+            </div>
+            <div id="bulkActions_trashContainer" style="display: none; align-items: center; gap: 12px;">
+                <span id="bulkCount_trashContainer" style="color: var(--text-muted); font-size: 14px;">0 selected</span>
+                <button class="btn-icon success" onclick="bulkRestore('trashContainer')" title="Restore Selected">
+                    ${iconRestore}
+                </button>
+                <button class="btn-icon danger" onclick="bulkPermDelete('trashContainer')" title="Delete Permanently">
+                    ${iconTrash}
+                </button>
+            </div>
+        `;
+        container.appendChild(headerRow);
+
         // Trashed Folders
         folders.forEach(folder => {
             const row = document.createElement("div");
             row.className = "file-row trashed";
             
             row.innerHTML = `
-                <div class="file-info">
+                <div style="display: flex; align-items: center; padding-right: 16px;">
+                    <input type="checkbox" class="item-checkbox" data-type="folder" data-id="${folder.id}" onchange="updateBulkActions('trashContainer')" style="width: 18px; height: 18px; cursor: pointer;">
+                </div>
+                <div class="file-info" style="flex: 1;">
                     <div class="file-icon folder-icon">${iconFolder}</div>
                     <div class="file-details">
                         <span class="file-name">${folder.name}</span>
@@ -256,7 +396,10 @@ async function fetchTrashedFiles() {
             row.className = "file-row trashed";
             
             row.innerHTML = `
-                <div class="file-info">
+                <div style="display: flex; align-items: center; padding-right: 16px;">
+                    <input type="checkbox" class="item-checkbox" data-type="file" data-id="${encodeURIComponent(file.storedName)}" onchange="updateBulkActions('trashContainer')" style="width: 18px; height: 18px; cursor: pointer;">
+                </div>
+                <div class="file-info" style="flex: 1;">
                     <div class="file-icon">${iconFile}</div>
                     <div class="file-details">
                         <span class="file-name" title="${file.originalName}">${file.originalName}</span>
@@ -571,3 +714,14 @@ if(origBtnCancelDup) {
     };
 }
 
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.toggle('active');
+    
+    if (sidebar.classList.contains('active')) {
+        overlay.classList.add('active');
+    } else {
+        overlay.classList.remove('active');
+    }
+}

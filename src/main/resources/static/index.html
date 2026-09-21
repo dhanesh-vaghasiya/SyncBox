@@ -8,6 +8,9 @@
 </head>
 <body>
 
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="brand">
@@ -46,8 +49,13 @@
         </div>
         <!-- Header -->
         <div class="header">
-            <div class="breadcrumb" id="breadcrumb">
-                <span>Home</span>
+            <div style="display: flex; align-items: center;">
+                <button type="button" class="btn-icon mobile-menu-btn" onclick="toggleSidebar()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div class="breadcrumb" id="breadcrumb">
+                    <span>Home</span>
+                </div>
             </div>
             <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
                 <input type="text" id="searchInput" placeholder="Search..." class="modal-input" style="padding: 8px 12px; margin: 0; min-width: 200px;" oninput="handleSearch()">

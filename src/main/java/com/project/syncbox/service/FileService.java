@@ -59,43 +59,45 @@ public class FileService {
             throw new IllegalArgumentException("Cannot save empty file.");
         }
         
-        byte[] bytes = file.getBytes();
+        Path tempPath = Paths.get(UPLOAD_DIR, java.util.UUID.randomUUID().toString() + ".tmp");
+        file.transferTo(tempPath.toFile());
         
-        // Calculate checksum
-        String checksum = calculateChecksum(bytes);
-        
-        if (!force && checkFileExists(checksum, username, folderId)) {
-            throw new DuplicateFileException("DUPLICATE_CHECKSUM");
+        try {
+            String checksum = calculateChecksum(tempPath);
+            
+            if (!force && checkFileExists(checksum, username, folderId)) {
+                throw new DuplicateFileException("DUPLICATE_CHECKSUM");
+            }
+            
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                originalFilename = "unknown";
+            }
+            
+            String storedFilename = getUniqueFilename(originalFilename, user);
+            Path finalPath = Paths.get(UPLOAD_DIR + storedFilename);
+            Files.move(tempPath, finalPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            
+            FileMetadata metadata = new FileMetadata();
+            metadata.setOriginalName(originalFilename);
+            metadata.setStoredName(storedFilename);
+            metadata.setSize(file.getSize());
+            metadata.setContentType(file.getContentType());
+            metadata.setUploadedAt(LocalDateTime.now());
+            metadata.setUser(user);
+            metadata.setChecksum(checksum);
+            if (folderId != null) {
+                Folder folder = folderRepository.findByIdAndUserAndDeletedAtIsNull(folderId, user)
+                        .orElseThrow(() -> new IllegalArgumentException("Folder not found"));
+                metadata.setFolder(folder);
+            }
+            
+            fileMetadataRepository.save(metadata);
+            
+            webSocketHandler.broadcastFileUpdate();
+        } finally {
+            Files.deleteIfExists(tempPath);
         }
-        
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) {
-            originalFilename = "unknown";
-        }
-        
-        String storedFilename = getUniqueFilename(originalFilename, user);
-        
-        Path path = Paths.get(UPLOAD_DIR + storedFilename);
-        Files.write(path, bytes);
-        
-        FileMetadata metadata = new FileMetadata();
-        metadata.setOriginalName(originalFilename);
-        metadata.setStoredName(storedFilename);
-        metadata.setSize(file.getSize());
-        metadata.setContentType(file.getContentType());
-        metadata.setUploadedAt(LocalDateTime.now());
-        metadata.setUser(user);
-        metadata.setChecksum(checksum);
-        if (folderId != null) {
-            Folder folder = folderRepository.findByIdAndUserAndDeletedAtIsNull(folderId, user)
-                    .orElseThrow(() -> new IllegalArgumentException("Folder not found"));
-            metadata.setFolder(folder);
-        }
-        
-        fileMetadataRepository.save(metadata);
-        
-        // Broadcast the update to all connected clients
-        webSocketHandler.broadcastFileUpdate();
     }
     
     private String calculateChecksum(byte[] bytes) {
@@ -108,13 +110,48 @@ public class FileService {
                 bufferToHash = bytes;
             } else {
                 bufferToHash = new byte[3 * CHUNK_SIZE];
-                // First 1MB
                 System.arraycopy(bytes, 0, bufferToHash, 0, CHUNK_SIZE);
-                // Middle 1MB
                 int mid = L / 2;
                 System.arraycopy(bytes, mid - (CHUNK_SIZE / 2), bufferToHash, CHUNK_SIZE, CHUNK_SIZE);
-                // Last 1MB
                 System.arraycopy(bytes, L - CHUNK_SIZE, bufferToHash, 2 * CHUNK_SIZE, CHUNK_SIZE);
+            }
+
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(bufferToHash);
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("Failed to calculate checksum", e);
+        }
+    }
+
+    private String calculateChecksum(Path path) throws IOException {
+        try {
+            long L = Files.size(path);
+            int CHUNK_SIZE = 1048576; // 1MB
+            byte[] bufferToHash;
+
+            if (L <= 3 * CHUNK_SIZE) {
+                bufferToHash = Files.readAllBytes(path);
+            } else {
+                bufferToHash = new byte[3 * CHUNK_SIZE];
+                try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(path.toFile(), "r")) {
+                    // First 1MB
+                    raf.seek(0);
+                    raf.readFully(bufferToHash, 0, CHUNK_SIZE);
+                    // Middle 1MB
+                    long mid = L / 2;
+                    raf.seek(mid - (CHUNK_SIZE / 2));
+                    raf.readFully(bufferToHash, CHUNK_SIZE, CHUNK_SIZE);
+                    // Last 1MB
+                    raf.seek(L - CHUNK_SIZE);
+                    raf.readFully(bufferToHash, 2 * CHUNK_SIZE, CHUNK_SIZE);
+                }
             }
 
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
@@ -455,9 +492,8 @@ public class FileService {
             }
         }
 
-        // Calculate Checksum
-        byte[] mergedBytes = Files.readAllBytes(mergedFilePath);
-        String checksum = calculateChecksum(mergedBytes);
+        // Calculate Checksum directly from disk stream
+        String checksum = calculateChecksum(mergedFilePath);
 
         Long folderId = session.getFolder() != null ? session.getFolder().getId() : null;
 
