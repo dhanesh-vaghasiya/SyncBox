@@ -22,7 +22,7 @@ class UploadManager {
     constructor() {
         this.items = new Map();
         this.activeUploads = 0;
-        this.maxConcurrent = 5;
+        this.maxConcurrent = 3;
         this.CHUNK_SIZE = 20 * 1024 * 1024;
         
         this.panel = document.getElementById('floatingUploadPanel');
@@ -42,6 +42,15 @@ class UploadManager {
     
     closePanel() {
         this.panel.style.display = 'none';
+        // Clear finished items when panel is closed
+        let changed = false;
+        for (const [key, item] of this.items.entries()) {
+            if (item.status === 'COMPLETED' || item.status === 'CANCELLED' || item.status === 'FAILED') {
+                this.items.delete(key);
+                changed = true;
+            }
+        }
+        if (changed) this.renderQueue();
     }
     
     async handleFilesSelection(fileList) {
@@ -61,9 +70,22 @@ class UploadManager {
         
         this.renderQueue();
         
-        // Phase 1: Hashing
-        const hashPromises = newItems.map(item => this.hashItem(item));
-        await Promise.all(hashPromises);
+        // Phase 1: Hashing (limit concurrency to 3 to prevent worker exhaustion)
+        const hashConcurrency = 3;
+        let currentIndex = 0;
+        
+        const hashWorkerQueue = async () => {
+            while (currentIndex < newItems.length) {
+                const item = newItems[currentIndex++];
+                await this.hashItem(item);
+            }
+        };
+        
+        const hashWorkers = [];
+        for (let i = 0; i < Math.min(hashConcurrency, newItems.length); i++) {
+            hashWorkers.push(hashWorkerQueue());
+        }
+        await Promise.all(hashWorkers);
         
         // Detect Batch Conflicts
         const checksumMap = new Map();
@@ -256,7 +278,23 @@ class UploadManager {
         if (sessionId === "undefined" || sessionId === "null") sessionId = null;
         
         try {
-            if (!sessionId) {
+            let sessionValid = false;
+            
+            if (sessionId) {
+                item.sessionId = sessionId;
+                const statusRes = await fetch(`/api/files/upload/session/${sessionId}/status`);
+                if (statusRes.ok) {
+                    const data = await statusRes.json();
+                    item.uploadedChunks = data.uploadedChunks || [];
+                    sessionValid = true;
+                } else {
+                    // Session no longer exists on server, remove from local storage and create a new one
+                    localStorage.removeItem(storageKey);
+                    sessionId = null;
+                }
+            }
+            
+            if (!sessionValid) {
                 const totalChunks = Math.ceil(item.size / this.CHUNK_SIZE);
                 let initUrl = `/api/files/upload/session?originalName=${encodeURIComponent(item.fileName)}&contentType=${encodeURIComponent(item.contentType)}&totalSize=${item.size}&totalChunks=${totalChunks}`;
                 if (item.folderId) initUrl += `&folderId=${item.folderId}`;
@@ -267,13 +305,7 @@ class UploadManager {
                 sessionId = data.id;
                 localStorage.setItem(storageKey, sessionId);
                 item.sessionId = sessionId;
-            } else {
-                item.sessionId = sessionId;
-                const statusRes = await fetch(`/api/files/upload/session/${sessionId}/status`);
-                if (statusRes.ok) {
-                    const data = await statusRes.json();
-                    item.uploadedChunks = data.uploadedChunks || [];
-                }
+                item.uploadedChunks = [];
             }
             
             await this.uploadChunks(item);
@@ -282,6 +314,11 @@ class UploadManager {
             if (item.status !== 'PAUSED' && item.status !== 'CANCELLED') {
                 item.status = 'FAILED';
                 item.errorMsg = e.message;
+                setTimeout(() => {
+                    this.items.delete(item.clientId);
+                    this.renderQueue();
+                    if (this.items.size === 0) this.closePanel();
+                }, 3000);
             }
             this.activeUploads--;
             this.renderQueue();
@@ -343,6 +380,12 @@ class UploadManager {
                 localStorage.removeItem(`upload_${item.fileName}_${item.size}`);
                 if (currentView === 'files' || currentView === 'recent') fetchFiles();
                 if (currentView === 'recent') fetchRecentFiles();
+                
+                setTimeout(() => {
+                    this.items.delete(item.clientId);
+                    this.renderQueue();
+                    if (this.items.size === 0) this.closePanel();
+                }, 3000);
             } else {
                 throw new Error("Complete failed");
             }
@@ -389,6 +432,12 @@ class UploadManager {
             localStorage.removeItem(`upload_${item.fileName}_${item.size}`);
             this.renderQueue();
             this.processQueue();
+            
+            setTimeout(() => {
+                this.items.delete(clientId);
+                this.renderQueue();
+                if (this.items.size === 0) this.closePanel();
+            }, 3000);
         }
     }
     
