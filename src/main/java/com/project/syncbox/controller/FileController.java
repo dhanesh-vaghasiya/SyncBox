@@ -14,10 +14,14 @@ import java.security.Principal;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/files")
 public class FileController {
+
+    private static final Logger log = LoggerFactory.getLogger(FileController.class);
 
     private final FileService fileService;
 
@@ -117,10 +121,10 @@ public class FileController {
                 try {
                     fileService.completeUpload(sessionId, "KEEP_BOTH", username);
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    log.error("Upload failure uploadId={} userId={} reason=\"Failed to fallback complete duplicate: {}\"", sessionId, username, ex.getMessage(), ex);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Upload failure uploadId={} userId={} reason=\"Failed to complete upload: {}\"", sessionId, username, e.getMessage(), e);
             }
         });
         

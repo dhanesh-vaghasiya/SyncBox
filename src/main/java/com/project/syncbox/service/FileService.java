@@ -23,9 +23,14 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import com.project.syncbox.service.storage.StorageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class FileService {
+
+    private static final Logger log = LoggerFactory.getLogger(FileService.class);
 
     private final String UPLOAD_DIR = "./uploads/";
     private final FileWebSocketHandler webSocketHandler;
@@ -34,17 +39,20 @@ public class FileService {
     private final com.project.syncbox.repository.UploadSessionRepository uploadSessionRepository;
 
     private final com.project.syncbox.repository.FolderRepository folderRepository;
+    private final StorageService storageService;
 
     public FileService(FileWebSocketHandler webSocketHandler, 
                        FileMetadataRepository fileMetadataRepository, 
                        UserRepository userRepository,
                        com.project.syncbox.repository.UploadSessionRepository uploadSessionRepository,
-                       com.project.syncbox.repository.FolderRepository folderRepository) {
+                       com.project.syncbox.repository.FolderRepository folderRepository,
+                       StorageService storageService) {
         this.webSocketHandler = webSocketHandler;
         this.fileMetadataRepository = fileMetadataRepository;
         this.userRepository = userRepository;
         this.uploadSessionRepository = uploadSessionRepository;
         this.folderRepository = folderRepository;
+        this.storageService = storageService;
         File directory = new File(UPLOAD_DIR);
         if (!directory.exists()) {
             directory.mkdirs();
@@ -75,8 +83,7 @@ public class FileService {
             }
             
             String storedFilename = getUniqueFilename(originalFilename, user);
-            Path finalPath = Paths.get(UPLOAD_DIR + storedFilename);
-            Files.move(tempPath, finalPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            storageService.uploadFile(storedFilename, tempPath, file.getContentType());
             
             FileMetadata metadata = new FileMetadata();
             metadata.setOriginalName(originalFilename);
@@ -218,10 +225,13 @@ public class FileService {
             return null; // File doesn't exist or doesn't belong to the user
         }
 
-        Path file = Paths.get(UPLOAD_DIR).resolve(filename);
-        Resource resource = new UrlResource(file.toUri());
+        Resource resource = storageService.loadAsResource(
+                metadata.get().getStoredName(), 
+                metadata.get().getOriginalName(), 
+                metadata.get().getSize());
 
-        if (resource.exists() || resource.isReadable()) {
+        if (resource != null && (resource.exists() || resource.isReadable())) {
+            log.info("Download file userId={} file={}", user.getId(), metadata.get().getOriginalName());
             return resource;
         } else {
             return null;
@@ -238,6 +248,7 @@ public class FileService {
             metadata.setDeletedAt(LocalDateTime.now());
             fileMetadataRepository.save(metadata);
             webSocketHandler.broadcastFileUpdate();
+            log.info("Delete file userId={} file={}", user.getId(), metadata.getOriginalName());
             return true;
         }
         return false;
@@ -253,6 +264,7 @@ public class FileService {
             metadata.setDeletedAt(null);
             fileMetadataRepository.save(metadata);
             webSocketHandler.broadcastFileUpdate();
+            log.info("Restore file userId={} file={}", user.getId(), metadata.getOriginalName());
             return true;
         }
         return false;
@@ -266,14 +278,14 @@ public class FileService {
         if (metadataOpt.isPresent()) {
             permanentlyDeleteFile(metadataOpt.get());
             webSocketHandler.broadcastFileUpdate();
+            log.info("Permanent delete file userId={} file={}", user.getId(), metadataOpt.get().getOriginalName());
             return true;
         }
         return false;
     }
 
     public void permanentlyDeleteFile(FileMetadata metadata) throws IOException {
-        Path file = Paths.get(UPLOAD_DIR).resolve(metadata.getStoredName());
-        Files.deleteIfExists(file); // Ignore result, the file might already be missing from disk
+        storageService.deleteFile(metadata.getStoredName());
         fileMetadataRepository.delete(metadata);
     }
 
@@ -286,8 +298,10 @@ public class FileService {
 
         if (checkFileExists(metadata.getChecksum(), username, targetFolderId)) {
             if ("NONE".equals(duplicateAction)) {
+                log.info("Move conflict file={} duplicateAction=NONE", metadata.getOriginalName());
                 throw new DuplicateFileException("DUPLICATE_CHECKSUM");
             } else if ("REPLACE".equals(duplicateAction)) {
+                log.info("Move conflict file={} duplicateAction=REPLACE", metadata.getOriginalName());
                 List<FileMetadata> allFilesInFolder = getFileList(username, targetFolderId);
                 for (FileMetadata fm : allFilesInFolder) {
                     if (metadata.getChecksum().equals(fm.getChecksum()) && !fm.getId().equals(metadata.getId())) {
@@ -295,6 +309,8 @@ public class FileService {
                         fileMetadataRepository.save(fm);
                     }
                 }
+            } else {
+                log.info("Move conflict file={} duplicateAction=KEEP_BOTH", metadata.getOriginalName());
             }
             // KEEP_BOTH does nothing, just proceeds to move
         }
@@ -309,6 +325,7 @@ public class FileService {
 
         fileMetadataRepository.save(metadata);
         webSocketHandler.broadcastFileUpdate();
+        log.info("Move file userId={} file={} toFolderId={}", user.getId(), metadata.getOriginalName(), targetFolderId);
         return true;
     }
 
@@ -321,8 +338,10 @@ public class FileService {
 
         if (checkFileExists(sourceMetadata.getChecksum(), username, targetFolderId)) {
             if ("NONE".equals(duplicateAction)) {
+                log.info("Copy conflict file={} duplicateAction=NONE", sourceMetadata.getOriginalName());
                 throw new DuplicateFileException("DUPLICATE_CHECKSUM");
             } else if ("REPLACE".equals(duplicateAction)) {
+                log.info("Copy conflict file={} duplicateAction=REPLACE", sourceMetadata.getOriginalName());
                 List<FileMetadata> allFilesInFolder = getFileList(username, targetFolderId);
                 for (FileMetadata fm : allFilesInFolder) {
                     if (sourceMetadata.getChecksum().equals(fm.getChecksum())) {
@@ -330,6 +349,8 @@ public class FileService {
                         fileMetadataRepository.save(fm);
                     }
                 }
+            } else {
+                log.info("Copy conflict file={} duplicateAction=KEEP_BOTH", sourceMetadata.getOriginalName());
             }
         }
 
@@ -340,10 +361,7 @@ public class FileService {
         }
 
         String newStoredName = getUniqueFilename(sourceMetadata.getOriginalName(), user);
-        
-        Path sourcePath = Paths.get(UPLOAD_DIR).resolve(sourceMetadata.getStoredName());
-        Path targetPath = Paths.get(UPLOAD_DIR).resolve(newStoredName);
-        Files.copy(sourcePath, targetPath);
+        storageService.copyFile(sourceMetadata.getStoredName(), newStoredName);
 
         FileMetadata newMetadata = new FileMetadata();
         newMetadata.setOriginalName(sourceMetadata.getOriginalName());
@@ -357,6 +375,7 @@ public class FileService {
 
         fileMetadataRepository.save(newMetadata);
         webSocketHandler.broadcastFileUpdate();
+        log.info("Copy file userId={} file={} toFolderId={}", user.getId(), newMetadata.getOriginalName(), targetFolderId);
         return newMetadata;
     }
 
@@ -395,6 +414,7 @@ public class FileService {
             Files.createDirectories(tempDir);
         }
 
+        log.info("Upload session created uploadId={} userId={} file={}", session.getId(), user.getId(), session.getOriginalName());
         return session;
     }
 
@@ -407,11 +427,13 @@ public class FileService {
 
         Path tempDir = Paths.get(UPLOAD_DIR + "temp_" + session.getId());
         if (!Files.exists(tempDir)) {
+            log.error("Chunk upload failure uploadId={} chunk={}/{} reason=\"Temp dir not found\"", session.getId(), chunkIndex + 1, session.getTotalChunks());
             throw new IOException("Temporary directory for session not found.");
         }
 
         Path chunkPath = tempDir.resolve("part_" + chunkIndex);
         Files.write(chunkPath, file.getBytes());
+        log.info("Chunk uploaded uploadId={} chunk={}/{}", session.getId(), chunkIndex + 1, session.getTotalChunks());
     }
 
     public com.project.syncbox.dto.SessionStatusDTO getSessionStatus(String sessionId, String username) {
@@ -481,9 +503,11 @@ public class FileService {
 
         if (checkFileExists(checksum, username, folderId)) {
             if ("NONE".equals(duplicateAction)) {
+                log.info("Upload conflict uploadId={} file={} duplicateAction=NONE", session.getId(), session.getOriginalName());
                 // Keep the temp dir and merged file so they can retry
                 throw new DuplicateFileException("DUPLICATE_CHECKSUM");
             } else if ("REPLACE".equals(duplicateAction)) {
+                log.info("Upload conflict uploadId={} file={} duplicateAction=REPLACE", session.getId(), session.getOriginalName());
                 // Find and soft-delete existing files with this checksum in this folder
                 java.util.List<FileMetadata> allFilesInFolder = getFileList(username, folderId);
                 for (FileMetadata fm : allFilesInFolder) {
@@ -492,21 +516,23 @@ public class FileService {
                         fileMetadataRepository.save(fm);
                     }
                 }
+            } else {
+                log.info("Upload conflict uploadId={} file={} duplicateAction=KEEP_BOTH", session.getId(), session.getOriginalName());
             }
             // If "KEEP_BOTH", we just proceed and generate a new file entry
         }
 
         // Generate final stored name
         String storedFilename = getUniqueFilename(session.getOriginalName(), user);
-        Path finalPath = Paths.get(UPLOAD_DIR + storedFilename);
 
-        // Move merged file to final path
-        Files.move(mergedFilePath, finalPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        // Upload merged file to storage (Backblaze B2 cloud storage or local)
+        storageService.uploadFile(storedFilename, mergedFilePath, session.getContentType());
 
         // Cleanup chunks
         for (int i = 0; i < session.getTotalChunks(); i++) {
             Files.deleteIfExists(tempDir.resolve("part_" + i));
         }
+        Files.deleteIfExists(mergedFilePath);
         Files.deleteIfExists(tempDir);
 
         // Save FileMetadata
@@ -524,5 +550,8 @@ public class FileService {
         uploadSessionRepository.delete(session);
 
         webSocketHandler.broadcastFileUpdate();
+        
+        long durationMs = java.time.Duration.between(session.getCreatedAt(), LocalDateTime.now()).toMillis();
+        log.info("Upload completed uploadId={} userId={} durationMs={}", session.getId(), user.getId(), durationMs);
     }
 }

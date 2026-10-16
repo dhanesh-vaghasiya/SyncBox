@@ -14,9 +14,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class FolderService {
+
+    private static final Logger log = LoggerFactory.getLogger(FolderService.class);
 
     private final FolderRepository folderRepository;
     private final FileMetadataRepository fileMetadataRepository;
@@ -66,6 +70,7 @@ public class FolderService {
         
         folderRepository.save(folder);
         webSocketHandler.broadcastFileUpdate();
+        log.info("Create folder userId={} folderId={} folderName=\"{}\"", user.getId(), folder.getId(), folder.getName());
         return folder;
     }
 
@@ -122,6 +127,7 @@ public class FolderService {
         folder.setUpdatedAt(LocalDateTime.now());
         folderRepository.save(folder);
         webSocketHandler.broadcastFileUpdate();
+        log.info("Rename folder userId={} folderId={} newName=\"{}\"", user.getId(), folder.getId(), newName);
         return folder;
     }
 
@@ -162,6 +168,7 @@ public class FolderService {
         folder.setUpdatedAt(LocalDateTime.now());
         folderRepository.save(folder);
         webSocketHandler.broadcastFileUpdate();
+        log.info("Move folder userId={} folderId={} toParentId={}", user.getId(), folder.getId(), targetParentId);
         return folder;
     }
 
@@ -216,6 +223,7 @@ public class FolderService {
 
         softDeleteRecursive(folder);
         webSocketHandler.broadcastFileUpdate();
+        log.info("Delete folder userId={} folderId={}", user.getId(), folder.getId());
     }
 
     private void softDeleteRecursive(Folder folder) {
@@ -252,6 +260,7 @@ public class FolderService {
         
         restoreRecursive(folder);
         webSocketHandler.broadcastFileUpdate();
+        log.info("Restore folder userId={} folderId={}", user.getId(), folder.getId());
     }
 
     private void restoreRecursive(Folder folder) {
@@ -281,6 +290,7 @@ public class FolderService {
 
         permanentlyDeleteFolderRecursive(folder);
         webSocketHandler.broadcastFileUpdate();
+        log.info("Permanent delete folder userId={} folderId={}", user.getId(), folder.getId());
     }
     
     private void permanentlyDeleteFolderRecursive(Folder folder) {
